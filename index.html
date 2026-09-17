@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#14201a" />
+    <!-- Installed (Add to Home Screen) the app runs full screen; the status bar overlays the page and safe-area insets keep content clear of it. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ailexity" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <title>Ailexity Retail | Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-stage">
+      <div class="phone-ui">
+        <!-- Landing: photo background, live clock, a thought of the day, month progress and one sign-in button. -->
+        <section class="landing-screen" id="landingScreen" aria-label="Ailexity Retail landing page">
+          <header class="landing-top">
+            <div class="landing-brand"><span class="brand-icon" aria-hidden="true"><i><span></span><span></span><span></span></i></span><span><strong>AILEXITY</strong><small>RETAIL</small></span></div>
+            <span class="landing-icon-button round landing-daylight" id="landingDaylight" role="img" aria-label="Time of day"></span>
+          </header>
+          <div class="landing-hero"><h1>Run your<br />store smarter.</h1></div>
+          <div class="landing-cards">
+            <div class="landing-score landing-clock"><strong id="landingTime">–</strong><span><b id="landingGreeting">Good day</b><br /><span id="landingDate"></span></span><i><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></i></div>
+            <div class="landing-tiles">
+              <article class="landing-tile tile-green tile-thought" aria-live="polite"><span class="tile-label">Thought<br />of the day</span><i class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6" /><path d="M10 21h4" /><path d="M8.5 14.5a5.5 5.5 0 1 1 7 0c-.8.7-1.2 1.4-1.3 2.5h-4.4c-.1-1.1-.5-1.8-1.3-2.5z" /></svg></i><strong id="landingQuote">–</strong><small id="landingQuoteBy"></small><button type="button" class="tile-next" id="landingNextThought" aria-label="Another thought"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7" /><path d="M9 7h8v8" /></svg></button></article>
+              <article class="landing-tile tile-dark tile-month"><span class="tile-label">This<br />month</span><i class="tile-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2.5" /><path d="M4 10h16" /><path d="M8 3v4" /><path d="M16 3v4" /></svg></i><strong id="landingMonthPercent">–</strong><small id="landingMonthNote"></small><b class="tile-progress"><i id="landingMonthBar"></i></b></article>
+            </div>
+          </div>
+          <nav class="landing-nav" aria-label="Sign in">
+            <span class="landing-nav-item landing-nav-info"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4" /><path d="M6 4h11l-2.5 4 2.5 4H6" /></svg><span id="landingWeek">Week –</span></span>
+            <div class="landing-nav-center-wrap"><button type="button" class="landing-nav-center" id="enterAppButton" aria-label="Sign in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7" /><path d="M9 7h8v8" /></svg></button><span class="landing-nav-center-label">Sign in</span></div>
+            <button type="button" class="landing-nav-item" id="landingSupport"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></svg><span>Support</span></button>
+          </nav>
+        </section>
+        <section class="welcome-screen" aria-label="Ailexity Retail welcome" hidden>
+          <div class="welcome-logo" aria-hidden="true"><span></span><span></span><span></span></div>
+          <h1>Welcome to<br /><em>Ailexity Retail.</em></h1>
+          <p>Made for stores.<br />Designed for people.</p>
+        </section>
+        <!-- One sign-in form for every role: the server verifies the role and the app opens the matching workspace. -->
+        <section class="login-card admin-login" aria-label="Sign in" hidden>
+          <div class="login-heading"><h2>Welcome back.</h2><p>Sign in with your superadmin or store owner account. Your role is verified automatically.</p></div>
+          <form id="loginForm" novalidate>
+            <div class="field-group"><label for="email">Email</label><div class="input-shell"><span class="input-icon" aria-hidden="true">@</span><input id="email" name="email" type="email" autocomplete="username" placeholder="you@company.com" /><span class="field-check" aria-hidden="true">✓</span></div><small class="field-error" id="emailError"></small></div>
+            <div class="field-group"><div class="label-row"><label for="password">Password</label><button type="button" class="text-button" id="forgotButton">Forgot?</button></div><div class="input-shell"><span class="input-icon lock-icon" aria-hidden="true">●</span><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" /><button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">Show</button></div><small class="field-error" id="passwordError"></small></div>
+            <div class="field-group activation-field" id="activationField" hidden><label for="activationKey">First-login activation key</label><div class="input-shell"><span class="input-icon" aria-hidden="true">#</span><input id="activationKey" name="activationKey" autocomplete="one-time-code" placeholder="Paste the key from your welcome email" /></div><small class="field-error" id="activationError"></small></div>
+            <label class="remember-row"><input id="remember" type="checkbox" /><span class="custom-checkbox" aria-hidden="true">✓</span><span>Keep me signed in</span></label>
+            <button class="submit-button" type="submit"><span>Sign in</span><span class="arrow" aria-hidden="true">↗</span></button><div class="form-message" id="formMessage" role="status" aria-live="polite"></div>
+          </form>
+          <p class="support-copy">Need access? <button type="button" class="text-button" id="supportButton">Contact your workspace owner</button></p>
+        </section>
+
+        <!-- ===== SUPERADMIN: platform management ===== -->
+        <section class="admin-shell" id="adminShell" aria-label="Superadmin workspace" hidden>
+          <header class="workspace-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="pageTitle">Dashboard</h2></header>
+          <div class="workspace-pages">
+            <section class="workspace-page active-page" data-page="dashboard" aria-label="Platform dashboard">
+              <h1>Dashboard</h1>
+              <div class="dashboard-clock"><div><p id="dashboardGreeting">Good morning</p><strong id="dashboardDate"></strong></div><time id="dashboardTime"></time></div>
+              <div class="date-strip" id="dateStrip" aria-label="Choose a day"></div>
+              <article class="primary-metric"><span>USER ACTIVITY</span><strong><span id="dayEventCount">–</span><small id="dayEventUnit">events</small></strong><p id="dayEventLabel">Loading…</p><div class="metric-bars" id="weekBars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+              <div class="metric-grid"><article class="metric-card green-metric"><span>Active retailers</span><strong id="activeAccounts">–</strong><small id="activeAccountsNote">Loading…</small></article><article class="metric-card dark-metric"><span>Signed in now</span><strong id="signedInNow">–</strong><small id="signedInNote">Loading…</small></article></div>
+
+              <p class="section-label">Retailer statistics</p>
+              <div class="stat-tiles">
+                <article><span>Total</span><strong id="statRetailersTotal">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="statRetailersPending">–</strong></article>
+                <article class="tile-danger"><span>Suspended</span><strong id="statRetailersSuspended">–</strong></article>
+                <article class="tile-muted"><span>Archived</span><strong id="statRetailersArchived">–</strong></article>
+              </div>
+
+              <p class="section-label">Order statistics</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Today</span><strong id="statOrdersToday">–</strong></article>
+                <article><span>This month</span><strong id="statOrdersMonth">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="statOrdersPending">–</strong></article>
+                <article class="tile-muted"><span>Cancelled</span><strong id="statOrdersCancelled">–</strong></article>
+              </div>
+
+              <p class="section-label">Revenue statistics</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Today</span><strong id="statRevenueToday">–</strong></article>
+                <article><span>This month</span><strong id="statRevenueMonth">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="statRevenuePending">–</strong></article>
+                <article><span>All time</span><strong id="statRevenueTotal">–</strong></article>
+              </div>
+
+              <article class="activity-card"><div class="card-heading"><strong>Alerts &amp; notifications</strong><button type="button" id="viewAlertsRetailers">Manage</button></div><div class="alert-list" id="alertList"><div class="empty-activity">Loading…</div></div></article>
+              <article class="activity-card"><div class="card-heading"><strong>Recent registrations</strong><button type="button" id="viewAllRetailers">View all</button></div><div id="registrationList"><div class="empty-activity">Loading…</div></div></article>
+              <article class="activity-card"><div class="card-heading"><strong>Recent activity</strong><button type="button" id="viewAllActivity">View all</button></div><div id="activityList"><div class="empty-activity">Loading…</div></div></article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · platform management</small></span></footer>
+            </section>
+
+            <section class="workspace-page" data-page="users" aria-label="Retailer management">
+              <p class="greeting">User management</p><h1>Retailers</h1>
+              <div class="users-toolbar"><span id="userCount">Retailers</span><button type="button" id="addUserButton">+ Add retailer</button></div>
+              <!-- Messages to stores: composed here, shown as a popup on the store dashboards for the chosen duration. -->
+              <article class="settings-groups report-panel" id="messagePanel">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">✉</span><span><strong>Messages to stores</strong><small id="messagePanelSummary">Send a notice that pops up on store dashboards</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden>
+                    <form id="messageForm" class="message-form">
+                      <label>Title<input id="messageTitle" required maxlength="80" placeholder="e.g. New stock arrives Monday" /></label>
+                      <label>Message<textarea id="messageText" required maxlength="500" rows="3" placeholder="What should the stores know?"></textarea></label>
+                      <div class="form-row"><label>Type<select id="messageLevel"><option value="info">Information</option><option value="important">Important</option><option value="urgent">Urgent</option></select></label><label>Show for<select id="messageDuration"><option value="24">1 day</option><option value="72" selected>3 days</option><option value="168">1 week</option><option value="336">2 weeks</option><option value="720">30 days</option><option value="custom">Custom…</option></select></label></div>
+                      <label id="messageCustomDays" hidden>Number of days (1–90)<input id="messageDays" type="number" min="1" max="90" step="1" value="5" inputmode="numeric" /></label>
+                      <label class="check-row"><input type="checkbox" id="messageAll" checked /><span>Send to all stores</span></label>
+                      <div class="recipient-list" id="messageRecipients" hidden></div>
+                      <div class="form-actions"><button type="submit">Send message</button></div>
+                      <small class="settings-message" role="status"></small>
+                    </form>
+                    <p class="section-label">Sent messages</p>
+                    <div class="sent-messages" id="sentMessages"><div class="empty-activity">No messages sent yet.</div></div>
+                  </div>
+                </section>
+              </article>
+              <div class="chip-row" id="userFilters" role="tablist" aria-label="Filter retailers">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All</button>
+                <button type="button" class="chip" data-filter="pending" role="tab" aria-selected="false">Pending</button>
+                <button type="button" class="chip" data-filter="active" role="tab" aria-selected="false">Active</button>
+                <button type="button" class="chip" data-filter="suspended" role="tab" aria-selected="false">Suspended</button>
+                <button type="button" class="chip" data-filter="archived" role="tab" aria-selected="false">Archived</button>
+              </div>
+
+              <!-- Add retailer: details → verify (OTP) → credentials (activation key) → ready -->
+              <form class="user-create-form" id="userCreateForm" hidden>
+                <ol class="stepper" aria-label="Onboarding progress"><li class="current">Details</li><li>Verify</li><li>Credentials</li><li>Ready</li></ol>
+                <fieldset><legend>Store information</legend><label>Store name<input id="newStoreName" required maxlength="80" placeholder="e.g. Sharma General Store" /></label></fieldset>
+                <fieldset><legend>Owner information</legend><label>Owner name<input id="newUserName" required placeholder="Full name" /></label></fieldset>
+                <fieldset><legend>Contact information</legend><label>Email<input id="newUserEmail" required type="email" placeholder="owner@store.com" /></label><label>Phone<input id="newUserPhone" required type="tel" placeholder="+91 98765 43210" /></label></fieldset>
+                <fieldset><legend>Business information</legend><label>Business type<select id="newBusinessType"><option value="">Select a type</option><option>Grocery</option><option>Pharmacy</option><option>Clothing</option><option>Electronics</option><option>Restaurant / Café</option><option>Hardware</option><option>Other</option></select></label><label>Address<input id="newAddress" maxlength="160" placeholder="Area, city" /></label></fieldset>
+                <fieldset><legend>Subscription / plan</legend><label>Plan<select id="newUserDuration"><option value="30">Starter · 30 days</option><option value="90">Standard · 90 days</option><option value="365">Annual · 1 year</option><option value="0">Lifetime · no expiry</option></select></label></fieldset>
+                <div class="form-actions"><button type="submit">Create account &amp; send code</button><button type="button" class="ghost-button" id="userCreateCancel">Cancel</button></div>
+                <small id="userCreateMessage" role="status"></small>
+              </form>
+              <form class="otp-form" id="otpForm" hidden>
+                <ol class="stepper" aria-label="Onboarding progress"><li class="done">Details</li><li class="current">Verify</li><li>Credentials</li><li>Ready</li></ol>
+                <p class="form-hint" id="otpHint">A 6-digit verification code was sent to the retailer's email.</p>
+                <label>Verification code<input id="newUserOtp" inputmode="numeric" maxlength="6" placeholder="6-digit code" /></label>
+                <button type="submit">Verify &amp; generate login credentials</button>
+                <small id="otpMessage" role="status"></small>
+              </form>
+              <article class="onboarding-done" id="onboardingDone" hidden>
+                <ol class="stepper" aria-label="Onboarding progress"><li class="done">Details</li><li class="done">Verify</li><li class="done">Credentials</li><li class="current">Ready</li></ol>
+                <strong>Retailer can now sign in</strong>
+                <p id="onboardingDoneText"></p>
+                <div class="credential"><span>Temporary password</span><code id="onboardingPassword"></code></div>
+                <div class="credential"><span>Activation key</span><code id="onboardingKey"></code></div>
+                <div class="form-actions"><button type="button" id="onboardingCopyKey">Copy sign-in details</button><button type="button" class="ghost-button" id="onboardingClose">Done</button></div>
+              </article>
+
+              <article class="user-list" id="userList"></article>
+              <section class="user-details" id="userDetails" hidden>
+                <div class="details-header"><strong id="detailsTitle">Retailer details</strong><button type="button" id="closeDetailsButton" aria-label="Close">×</button></div>
+                <form id="userEditForm">
+                  <label>Store name<input id="editStoreName" maxlength="80" /></label>
+                  <label>Owner name<input id="editUserName" required /></label>
+                  <label>Email<input id="editUserEmail" required type="email" /></label>
+                  <label>Phone<input id="editUserPhone" required type="tel" /></label>
+                  <label>Business type<select id="editBusinessType"><option value="">Not set</option><option>Grocery</option><option>Pharmacy</option><option>Clothing</option><option>Electronics</option><option>Restaurant / Café</option><option>Hardware</option><option>Other</option></select></label>
+                  <label>Address<input id="editAddress" maxlength="160" /></label>
+                  <label>Status<select id="editUserStatus"><option value="active">Active</option><option value="suspended">Suspended</option><option value="verified">Verified (awaiting activation)</option><option value="pending_verification">Pending verification</option><option value="archived">Archived</option></select></label>
+                  <label>Plan<select id="editUserDuration"><option value="30">Starter · 30 days</option><option value="90">Standard · 90 days</option><option value="365">Annual · 1 year</option><option value="0">Lifetime · no expiry</option></select></label>
+                  <small id="editUserMessage" role="status"></small>
+                  <div class="detail-actions"><button type="submit">Save changes</button><button type="button" id="resetPasswordButton">Reset password</button><button class="danger-button" type="button" id="archiveUserButton">Archive account</button><button class="danger-button" type="button" id="deleteUserButton" hidden>Delete permanently</button></div>
+                </form>
+              </section>
+            </section>
+
+            <section class="workspace-page" data-page="inbox" aria-label="Inbox page">
+              <p class="greeting">Messages from stores</p><h1>Inbox</h1>
+              <div class="users-toolbar"><span id="inboxCount">Messages from stores</span><button type="button" id="inboxRefresh">Refresh</button></div>
+              <div class="chip-row" id="inboxFilters" role="tablist" aria-label="Filter messages">
+                <button type="button" class="chip active" data-filter="open" role="tab" aria-selected="true">Open</button>
+                <button type="button" class="chip" data-filter="new" role="tab" aria-selected="false">New</button>
+                <button type="button" class="chip" data-filter="seen" role="tab" aria-selected="false">Seen</button>
+                <button type="button" class="chip" data-filter="resolved" role="tab" aria-selected="false">Resolved</button>
+                <button type="button" class="chip" data-filter="all" role="tab" aria-selected="false">All</button>
+              </div>
+              <article class="user-list inbox-list" id="inboxList"><div class="empty-users">Loading…</div></article>
+            </section>
+            <section class="workspace-page" data-page="settings" aria-label="Settings page">
+              <p class="greeting">App management</p><h1>Settings</h1>
+              <article class="settings-groups" id="adminSettings">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⌁</span><span><strong>Platform profile</strong><small id="platformProfileSummary">Business name, support contact, currency</small></span><b>›</b></button>
+                  <form class="settings-form" id="platformProfileForm" hidden>
+                    <label>Platform name<input id="platformName" required maxlength="60" /></label>
+                    <label>Support email<input id="supportEmail" type="email" placeholder="support@company.com" /></label>
+                    <label>Support phone<input id="supportPhone" type="tel" placeholder="+91 98765 43210" /></label>
+                    <div class="form-row"><label>Currency (ISO code)<input id="platformCurrency" list="currencyOptions" maxlength="3" required autocapitalize="characters" placeholder="INR" /><datalist id="currencyOptions"><option value="INR"></option><option value="USD"></option><option value="EUR"></option><option value="GBP"></option><option value="AED"></option><option value="SGD"></option><option value="AUD"></option><option value="CAD"></option><option value="JPY"></option><option value="LKR"></option><option value="NPR"></option><option value="BDT"></option><option value="PKR"></option><option value="MYR"></option><option value="ZAR"></option></datalist></label><label>WhatsApp country code<input id="whatsappCode" inputmode="numeric" maxlength="4" required placeholder="91" /></label></div>
+                    <p class="form-hint">The currency formats every amount shown to superadmins and retailers. The country code is added to 10-digit mobile numbers when invoices are sent on WhatsApp. Retailers see the support contact under Subscription.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◷</span><span><strong>Retailer defaults</strong><small id="retailerDefaultsSummary">Default plan, expiry warnings, session length</small></span><b>›</b></button>
+                  <form class="settings-form" id="retailerDefaultsForm" hidden>
+                    <label>Default plan for new retailers<select id="defaultPlan"><option value="30">Starter · 30 days</option><option value="90">Standard · 90 days</option><option value="365">Annual · 1 year</option><option value="0">Lifetime · no expiry</option></select></label>
+                    <div class="form-row"><label>Warn before plan expiry (days)<input id="expiringSoonDays" type="number" min="1" max="90" step="1" inputmode="numeric" required /></label><label>Session length (hours)<input id="sessionHours" type="number" min="1" max="720" step="1" inputmode="numeric" required /></label></div>
+                    <p class="form-hint">The expiry warning drives the "expiring soon" alert and the dashboard note. Session length applies to new sign-ins.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◉</span><span><strong>Alerts &amp; notifications</strong><small id="alertsSummary">Choose what appears on the dashboard</small></span><b>›</b></button>
+                  <form class="settings-form" id="alertsForm" hidden>
+                    <label class="check-row"><input type="checkbox" data-alert="pendingVerification" /><span>Retailers waiting for OTP verification</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="awaitingActivation" /><span>Retailers verified but not yet signed in</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="expiringSoon" /><span>Plans expiring soon</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="expired" /><span>Expired plans</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="suspended" /><span>Suspended accounts</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="pendingPayments" /><span>Orders awaiting payment across stores</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="lowStock" /><span>Items running low across stores</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="outOfStock" /><span>Items out of stock across stores</span></label>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⚙</span><span><strong>Security</strong><small id="adminSecuritySummary">Change the superadmin password</small></span><b>›</b></button>
+                  <form class="settings-form" id="adminPasswordForm" hidden>
+                    <label>Current password<input id="adminCurrentPassword" type="password" autocomplete="current-password" required /></label>
+                    <label>New password<input id="adminNewPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters" /></label>
+                    <label>Confirm new password<input id="adminConfirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+                    <p class="form-hint">Other superadmin sessions are signed out when the password changes. The new password replaces the one in the server configuration.</p>
+                    <div class="form-actions"><button type="submit">Update password</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group"><button type="button" class="settings-row" id="signOutButton"><span class="setting-icon logout-icon">↪</span><span><strong>Sign out</strong><small>End this superadmin session</small></span><b>›</b></button></section>
+              </article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · Ailexity Retail</small></span></footer>
+            </section>
+          </div>
+          <nav class="tab-bar" aria-label="Superadmin navigation">
+            <button class="tab-item active" type="button" data-page="dashboard" aria-current="page"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M10 20v-6h4v6" /></svg><span class="tab-label">Dashboard</span></button>
+            <button class="tab-item" type="button" data-page="users"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7" /><path d="M17.5 14a6 6 0 0 1 4 5.5" /></svg><span class="tab-label">Retailers</span></button>
+            <button class="tab-item" type="button" data-page="inbox"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="2.5" /><path d="m4 8 8 5.5L20 8" /></svg><span class="tab-label">Inbox</span><i class="tab-count" id="inboxTabCount" hidden></i></button>
+            <button class="tab-item" type="button" data-page="settings"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18.5 7H20M4 17h1.5M10.5 17H20" /><circle cx="15.5" cy="7" r="2.5" /><circle cx="8" cy="17" r="2.5" /></svg><span class="tab-label">Settings</span></button>
+          </nav>
+        </section>
+
+        <!-- ===== RETAILER: store account ===== -->
+        <section class="user-shell" id="userShell" aria-label="Retailer workspace" hidden>
+          <header class="user-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="userPageTitle">Dashboard</h2></header>
+          <div class="user-pages">
+            <section class="user-page active-user-page" data-page="home" aria-label="Retailer dashboard">
+              <p class="greeting" id="userGreeting">Good morning</p><h1>Dashboard</h1>
+              <div class="user-date-strip" id="userDateStrip" role="group" aria-label="Choose a day"></div>
+              <article class="activity-card store-messages" id="storeMessages" hidden><div class="card-heading"><strong id="storeMessagesTitle">Messages</strong><span class="badge badge-important" id="storeMessagesUnread" hidden></span></div><div id="storeMessagesList"></div></article>
+              <div class="stat-tiles stat-tiles-3">
+                <article class="tile-good"><span id="homeSalesLabel">Sales today</span><strong id="homeSalesToday">–</strong></article>
+                <article><span id="homeOrdersLabel">Orders today</span><strong id="homeOrdersToday">–</strong></article>
+                <article><span>Total items</span><strong id="homeTotalItems">–</strong></article>
+                <article><span id="homeMonthLabel">Monthly sale</span><strong id="homeSalesMonth">–</strong></article>
+                <article><span id="homeAvgLabel">Avg. order value</span><strong id="homeAvgOrder">–</strong></article>
+                <article class="tile-warn"><span>Pending payments</span><strong id="homePendingPayments">–</strong></article>
+              </div>
+              <div class="section-row"><p class="section-label">Sales analytics</p><div class="segmented" id="salesRange" role="tablist" aria-label="Sales range"><button type="button" class="active" data-range="daily" role="tab" aria-selected="true">Daily</button><button type="button" data-range="weekly" role="tab" aria-selected="false">Weekly</button><button type="button" data-range="monthly" role="tab" aria-selected="false">Monthly</button></div></div>
+              <article class="user-hero-card"><span id="homeRangeLabel">THIS WEEK</span><strong id="homeRangeTotal">–</strong><p id="homeSalesNote">Loading…</p><div class="user-chart" id="homeChart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+              <p class="section-label" id="homeOrdersSection">Order analytics · today</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Completed</span><strong id="homeOrdersCompleted">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="homeOrdersPending">–</strong></article>
+                <article class="tile-muted"><span>Cancelled</span><strong id="homeOrdersCancelled">–</strong></article>
+                <article class="tile-danger"><span>Refunded</span><strong id="homeOrdersRefunded">–</strong></article>
+              </div>
+              <p class="section-label">Inventory</p>
+              <div class="stat-tiles stat-tiles-3">
+                <article><span>Available</span><strong id="homeItemsAvailable">–</strong></article>
+                <article class="tile-warn"><span>Low stock</span><strong id="homeItemsLow">–</strong></article>
+                <article class="tile-danger"><span>Out of stock</span><strong id="homeItemsOut">–</strong></article>
+              </div>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail for growing stores</small></span></footer>
+            </section>
+
+            <section class="user-page" data-page="items" aria-label="Items page">
+              <p class="greeting">Items management</p><h1>Items</h1>
+              <div class="user-toolbar"><span id="itemCount">No items yet</span><button type="button" id="addItemButton">+ Add item</button></div>
+              <div class="chip-row" id="itemFilters" role="tablist" aria-label="Filter items">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All items</button>
+                <button type="button" class="chip" data-filter="low" role="tab" aria-selected="false">Low stock</button>
+                <button type="button" class="chip" data-filter="out" role="tab" aria-selected="false">Out of stock</button>
+              </div>
+              <div class="chip-row chip-row-scroll" id="categoryFilters" aria-label="Filter by category" hidden></div>
+              <form class="store-form" id="itemForm" hidden>
+                <input type="hidden" id="itemFormId" />
+                <label>Name<input id="itemName" required maxlength="80" placeholder="e.g. House blend coffee" /></label>
+                <div class="form-row"><label>Price<input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label><label>Quantity<input id="itemQuantity" required type="number" min="0" step="1" inputmode="numeric" placeholder="0" /></label></div>
+                <div class="form-row"><label>Category<input id="itemCategory" list="categoryOptions" maxlength="40" placeholder="e.g. Beverages" /><datalist id="categoryOptions"></datalist></label><label>Low-stock alert at<input id="itemLowStock" type="number" min="0" step="1" inputmode="numeric" placeholder="5" /></label></div>
+                <label>SKU (optional)<input id="itemSku" maxlength="40" placeholder="e.g. 1024" /></label>
+                <div class="form-actions"><button type="submit" id="itemFormSubmit">Add item</button><button type="button" class="ghost-button" id="itemFormCancel">Cancel</button><button type="button" class="danger-button" id="itemDeleteButton" hidden>Delete item</button></div>
+                <small id="itemFormMessage" role="status"></small>
+              </form>
+              <article class="item-list" id="itemList"><div class="empty-list">No items yet. Add your first product to start billing.</div></article>
+            </section>
+
+            <section class="user-page" data-page="billing" aria-label="Billing page">
+              <p class="greeting">Billing &amp; invoicing</p><h1>Billing</h1>
+              <div class="user-toolbar"><span id="pickCount">Tap an item to add it</span><input class="search-input" id="pickSearch" type="search" placeholder="Search items" aria-label="Search items" /></div>
+              <div class="chip-row chip-row-scroll" id="pickCategories" role="tablist" aria-label="Filter by category" hidden></div>
+              <div class="pick-grid" id="pickList"></div>
+            </section>
+
+            <section class="user-page" data-page="history" aria-label="Orders page">
+              <p class="greeting">Order history</p><h1>Orders</h1>
+              <div class="user-toolbar"><span id="historyCount">No orders yet</span></div>
+              <!-- Performance report: pick a period, see how the store did, download it as a PDF (optionally with every order). -->
+              <article class="settings-groups report-panel" id="reportPanel">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">▤</span><span><strong>Performance report</strong><small id="reportSummaryLine">Pick a period to see how the store did, then download it as a PDF</small></span><b>›</b></button>
+                  <div class="settings-form settings-static report-body" hidden>
+                    <div class="chip-row" id="reportPresets" role="tablist" aria-label="Report period">
+                      <button type="button" class="chip" data-filter="today" role="tab" aria-selected="false">Today</button>
+                      <button type="button" class="chip" data-filter="yesterday" role="tab" aria-selected="false">Yesterday</button>
+                      <button type="button" class="chip active" data-filter="week" role="tab" aria-selected="true">This week</button>
+                      <button type="button" class="chip" data-filter="last7" role="tab" aria-selected="false">Last 7 days</button>
+                      <button type="button" class="chip" data-filter="month" role="tab" aria-selected="false">This month</button>
+                      <button type="button" class="chip" data-filter="lastMonth" role="tab" aria-selected="false">Last month</button>
+                      <button type="button" class="chip" data-filter="custom" role="tab" aria-selected="false">Custom dates</button>
+                    </div>
+                    <div class="form-row" id="reportDates" hidden><label>From<input id="reportFrom" type="date" /></label><label>To<input id="reportTo" type="date" /></label></div>
+                    <p class="report-range" id="reportRangeLabel"></p>
+                    <div class="stat-tiles stat-tiles-3">
+                      <article class="tile-good"><span>Sales</span><strong id="reportSales">–</strong></article>
+                      <article><span>Orders</span><strong id="reportOrders">–</strong></article>
+                      <article><span>Avg. order value</span><strong id="reportAvg">–</strong></article>
+                      <article><span>Items sold</span><strong id="reportItems">–</strong></article>
+                      <article class="tile-warn"><span>Pending payments</span><strong id="reportPending">–</strong></article>
+                      <article class="tile-muted"><span>Cancelled / refunded</span><strong id="reportVoided">–</strong></article>
+                    </div>
+                    <div class="report-lines" id="reportBreakdown"></div>
+                    <label class="check-row"><input type="checkbox" id="reportIncludeOrders" checked /><span>Include every order in the period (full order history) in the PDF</span></label>
+                    <div class="form-actions"><button type="button" id="reportDownload">Download PDF report</button></div>
+                    <small class="settings-message" id="reportMessage" role="status"></small>
+                  </div>
+                </section>
+              </article>
+              <div class="chip-row" id="orderFilters" role="tablist" aria-label="Filter orders">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All</button>
+                <button type="button" class="chip" data-filter="today" role="tab" aria-selected="false">Today</button>
+                <button type="button" class="chip" data-filter="pending" role="tab" aria-selected="false">Pending</button>
+                <button type="button" class="chip" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+                <button type="button" class="chip" data-filter="cancelled" role="tab" aria-selected="false">Cancelled</button>
+                <button type="button" class="chip" data-filter="refunded" role="tab" aria-selected="false">Refunded</button>
+              </div>
+              <article class="history-list" id="historyList"></article>
+            </section>
+
+            <section class="user-page" data-page="profile" aria-label="Profile page">
+              <p class="greeting">Profile &amp; settings</p><h1>Profile</h1>
+              <article class="profile-card"><span class="profile-large-avatar" id="profileAvatar">U</span><strong id="profileName">Store owner</strong><small id="profileEmail">owner@store.com</small><small id="profileStore"></small></article>
+              <article class="settings-groups" id="storeSettings">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◉</span><span><strong>Store profile</strong><small id="profileStoreDetails">Business profile and contact</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeProfileForm" hidden>
+                    <label>Store name<input id="settingsStoreName" required maxlength="80" /></label>
+                    <label>Owner name<input id="settingsOwnerName" required /></label>
+                    <label>Phone<input id="settingsPhone" type="tel" required /></label>
+                    <label>Business type<select id="settingsBusinessType"><option value="">Not set</option><option>Grocery</option><option>Pharmacy</option><option>Clothing</option><option>Electronics</option><option>Restaurant / Café</option><option>Hardware</option><option>Other</option></select></label>
+                    <label>Address<input id="settingsAddress" maxlength="160" placeholder="Area, city" /></label>
+                    <p class="form-hint">Your sign-in email can only be changed by the superadmin.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⌁</span><span><strong>Billing &amp; invoices</strong><small id="billingSettingsSummary">Tax and invoice note</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeBillingForm" hidden>
+                    <div class="form-row"><label>Default tax rate (%)<input id="settingsTaxRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0" /></label><label>Tax label<input id="settingsTaxLabel" maxlength="20" placeholder="e.g. GST" /></label></div>
+                    <label>Invoice note<textarea id="settingsInvoiceNote" maxlength="200" rows="2" placeholder="Printed at the bottom of every invoice"></textarea></label>
+                    <label class="check-row"><input type="checkbox" id="settingsShowContact" /><span>Show store phone and address on invoices</span></label>
+                    <p class="form-hint">The tax rate is pre-filled on every new bill and can still be changed per bill.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◫</span><span><strong>Inventory</strong><small id="inventorySettingsSummary">Low-stock alerts</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeInventoryForm" hidden>
+                    <label>Default low-stock alert level<input id="settingsLowStock" type="number" min="0" step="1" inputmode="numeric" required /></label>
+                    <label class="check-row"><input type="checkbox" id="settingsStockToasts" /><span>Warn me when an item becomes low or out of stock</span></label>
+                    <p class="form-hint">Applies to new items; each item can set its own level.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◷</span><span><strong>Subscription</strong><small id="profilePlan">Plan and expiry</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden><p class="form-hint" id="subscriptionDetails"></p><p class="form-hint" id="supportDetails"></p></div>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⚙</span><span><strong>Security</strong><small id="storeSecuritySummary">Password and account access</small></span><b>›</b></button>
+                  <form class="settings-form" id="storePasswordForm" hidden>
+                    <label>Current password<input id="storeCurrentPassword" type="password" autocomplete="current-password" required /></label>
+                    <label>New password<input id="storeNewPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters" /></label>
+                    <label>Confirm new password<input id="storeConfirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+                    <p class="form-hint">Your other devices are signed out when the password changes.</p>
+                    <div class="form-actions"><button type="submit">Update password</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">✉</span><span><strong id="feedbackTitle">Message Ailexity Retail</strong><small id="feedbackSummary">Feedback, problems or requests for the superadmin</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden>
+                    <form id="feedbackForm" class="message-form">
+                      <label>About<select id="feedbackCategory"><option value="feedback">Feedback</option><option value="issue">A problem</option><option value="request">A request</option><option value="other">Something else</option></select></label>
+                      <label>Subject<input id="feedbackSubject" required maxlength="100" placeholder="In a few words" /></label>
+                      <label>Message<textarea id="feedbackText" required maxlength="1000" rows="4" placeholder="Tell the superadmin what's on your mind"></textarea></label>
+                      <p class="form-hint" id="feedbackHint">Goes straight to the superadmin's inbox. Your history below shows when each message has been seen.</p>
+                      <div class="form-actions"><button type="submit">Send message</button></div>
+                      <small class="settings-message" role="status"></small>
+                    </form>
+                    <p class="section-label">Your messages</p>
+                    <div class="sent-messages" id="feedbackHistory"><div class="empty-activity">Nothing sent yet.</div></div>
+                  </div>
+                </section>
+                <section class="settings-group"><button type="button" class="settings-row" id="userSignOutButton"><span class="setting-icon logout-icon">↪</span><span><strong>Sign out</strong><small>End this session</small></span><b>›</b></button></section>
+              </article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · Ailexity Retail</small></span></footer>
+            </section>
+          </div>
+          <!-- Cart: a floating bar above the tab bar while the billing page has items; tapping it opens the sheet with lines, totals and checkout. -->
+          <div class="message-popup" id="messagePopup" hidden role="dialog" aria-modal="true" aria-labelledby="messagePopupTitle">
+            <div class="message-popup-card">
+              <span class="badge" id="messagePopupLevel">Message</span>
+              <h2 id="messagePopupTitle"></h2>
+              <p id="messagePopupText"></p>
+              <small id="messagePopupMeta"></small>
+              <div class="form-actions"><button type="button" id="messagePopupOk">Got it</button><button type="button" class="ghost-button" id="messagePopupLater">Later</button></div>
+              <small class="message-popup-count" id="messagePopupCount"></small>
+            </div>
+          </div>
+          <div class="cart-backdrop" id="cartBackdrop" hidden></div>
+          <section class="cart-float" id="cartFloat" hidden aria-label="Cart">
+            <div class="cart-sheet cart-card" id="cartSheet" hidden>
+              <div class="card-heading"><strong>Cart</strong><span><button type="button" id="clearCartButton">Clear</button></span></div>
+              <div id="cartLines"></div>
+              <div class="cart-summary" id="cartSummary">
+                <div><span>Items</span><b id="cartItemCount">0</b></div>
+                <div><span>Subtotal</span><b id="cartSubtotal">0</b></div>
+                <div class="cart-adjust"><label>Discount (amount)<input id="cartDiscount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label><label>Tax rate (%)<input id="cartTaxRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0" /></label></div>
+                <div id="cartDiscountRow" hidden><span>Discount</span><b id="cartDiscountAmount">0</b></div>
+                <div><span id="cartTaxLabel">Tax</span><b id="cartTax">0</b></div>
+                <div><span>Total</span><b id="cartTotal">0</b></div>
+              </div>
+              <div class="form-row customer-row"><label>Customer (optional)<input id="customerName" maxlength="80" placeholder="Name" /></label><label>WhatsApp number<input id="customerPhone" type="tel" inputmode="tel" maxlength="20" placeholder="+91 98765 43210" /></label></div>
+              <label class="pay-method">Payment<select id="paymentMethod"><option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option><option value="credit">Pay later (pending)</option></select></label>
+              <button type="button" class="complete-button" id="completeBillButton" disabled>Complete bill</button>
+              <small id="billingMessage" role="status"></small>
+            </div>
+            <button type="button" class="cart-bar" id="cartBar" aria-expanded="false" aria-controls="cartSheet" hidden><span class="cart-bar-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2.5l2 10h10l2-7H7" /><circle cx="9.5" cy="19" r="1.5" /><circle cx="16.5" cy="19" r="1.5" /></svg></span><span class="cart-bar-text"><strong id="cartBarTitle">0 items</strong><small id="cartBarMeta">Tap to review and complete the bill</small></span><b id="cartBarTotal">–</b><i class="cart-bar-chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg></i></button>
+            <div class="last-bill" id="lastBill" hidden><div><strong id="lastBillTitle"></strong><small id="lastBillMeta"></small></div><button type="button" class="whatsapp-button" id="lastBillWhatsApp">Send invoice on WhatsApp</button><button type="button" class="last-bill-close" id="lastBillClose" aria-label="Dismiss">×</button></div>
+          </section>
+          <nav class="tab-bar" aria-label="Retailer navigation">
+            <button class="tab-item active" type="button" data-page="home" aria-current="page"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M10 20v-6h4v6" /></svg><span class="tab-label">Dashboard</span><i class="tab-dot" id="homeTabDot" hidden></i></button>
+            <button class="tab-item" type="button" data-page="items"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg><span class="tab-label">Items</span></button>
+            <button class="tab-item" type="button" data-page="billing"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18" /><path d="M7 15h3.5" /></svg><span class="tab-label">Billing</span></button>
+            <button class="tab-item" type="button" data-page="history"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg><span class="tab-label">Orders</span></button>
+            <button class="tab-item" type="button" data-page="profile"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></svg><span class="tab-label">Profile</span></button>
+          </nav>
+        </section>
+      </div>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
