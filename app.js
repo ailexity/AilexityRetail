@@ -179,7 +179,8 @@ function resetLoginForm() {
 
 // Wires a shell's bottom tab bar to its pages: each .tab-item[data-page] shows the
 // matching [data-page] section, marks itself active/aria-current, and pushes its
-// label into the header title.
+// label into the header title. Pages without a tab (the store's Notes page) can still
+// be activated by name; their title comes from the page's own h1.
 function setupTabBar(shell, { pageSelector, activeClass, titleSelector }) {
   const tabs = [...shell.querySelectorAll(".tab-item")];
   const pages = [...shell.querySelectorAll(pageSelector)];
@@ -191,7 +192,7 @@ function setupTabBar(shell, { pageSelector, activeClass, titleSelector }) {
       if (isActive) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
     });
     pages.forEach((page) => page.classList.toggle(activeClass, page.dataset.page === target));
-    const label = tabs.find((tab) => tab.dataset.page === target)?.querySelector(".tab-label");
+    const label = tabs.find((tab) => tab.dataset.page === target)?.querySelector(".tab-label") || pages.find((page) => page.dataset.page === target)?.querySelector("h1");
     if (title && label) title.textContent = label.textContent;
     const scroller = shell.querySelector(".workspace-pages, .user-pages"); if (scroller) scroller.scrollTop = 0;
     shell.dispatchEvent(new CustomEvent("page:change", { detail: target }));
@@ -432,7 +433,7 @@ const ORDER_DOTS = { completed: ["sale-dot", "↗"], pending: ["pending-dot", "�
 const formatClock = (date) => date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const invoiceLabel = (bill) => bill.invoiceNumber ? `Invoice ${bill.invoiceNumber}` : `Bill ${billNumber(bill)}`;
 const THUMB_CLASSES = ["coral-thumb", "green-thumb", "gray-thumb"];
-const storeState = { profile: null, items: [], bills: [], cart: new Map(), search: "", itemFilter: "all", category: "", orderFilter: "all", salesRange: "daily", expandedBill: null, lastBillId: null, cartOpen: false, pickCategory: "", messages: [], snoozed: new Set(), messageTimer: null };
+const storeState = { profile: null, items: [], bills: [], cart: new Map(), search: "", itemFilter: "all", category: "", orderFilter: "all", salesRange: "daily", expandedBill: null, lastBillId: null, cartOpen: false, pickCategory: "", messages: [], snoozed: new Set(), messageTimer: null, notes: [], remindedIds: new Set(), reminderTimer: null, notesDay: 0, overdueCount: 0 };
 const findItem = (id) => storeState.items.find((item) => item.id === id);
 const findBill = (id) => storeState.bills.find((bill) => bill.id === id);
 const itemThumb = (item) => `<span class="item-thumb ${THUMB_CLASSES[storeState.items.indexOf(item) % THUMB_CLASSES.length]}">${escapeHtml(userInitial(item.name))}</span>`;
@@ -459,7 +460,7 @@ async function startStore() {
   renderUserDateStrip();
   try { await Promise.all([loadItems(), loadBills()]); renderStorePages(); }
   catch (error) { showToast(error.message); }
-  startStoreMessages(); loadFeedbackHistory();
+  startStoreMessages(); loadFeedbackHistory(); startNotes();
 }
 
 // Items page: catalog with stock filters (all / low / out) and category chips
@@ -597,7 +598,10 @@ function toggleCartSheet(open = !storeState.cartOpen) { storeState.cartOpen = op
 document.querySelector("#cartBar").addEventListener("click", () => toggleCartSheet());
 document.querySelector("#cartBackdrop").addEventListener("click", () => toggleCartSheet(false));
 document.querySelector("#lastBillClose").addEventListener("click", () => { storeState.lastBillId = null; renderLastBill(); });
-userShell.addEventListener("page:change", (event) => { storeState.cartOpen = false; renderCart(); if (event.detail === "home") maybeShowMessagePopup(); });
+userShell.addEventListener("page:change", (event) => {
+  storeState.cartOpen = false; renderCart(); if (event.detail === "home") maybeShowMessagePopup();
+  document.querySelector("#notesButton").classList.toggle("active", event.detail === "notes" || event.detail === "note"); if (event.detail === "notes") renderNotes();
+});
 
 // ---- Messages from the superadmin: popup on the dashboard for unread ones, a card listing active ones, a dot on the tab ----
 const MESSAGE_LEVEL_LABELS = { info: "Information", important: "Important", urgent: "Urgent" };
@@ -649,7 +653,7 @@ function maybeShowMessagePopup() {
   const onHome = document.querySelector('.user-page[data-page="home"]').classList.contains("active-user-page") && !userShell.hidden;
   const pending = storeState.messages.filter((message) => !message.read && !storeState.snoozed.has(message.id));
   const popup = document.querySelector("#messagePopup");
-  if (!onHome || !pending.length) { popup.hidden = true; return; }
+  if (!onHome || !pending.length) { popup.hidden = true; maybeShowReminderPopup(); return; } // a reminder waits behind platform messages
   const message = pending[0]; popup.dataset.messageId = message.id;
   const level = document.querySelector("#messagePopupLevel"); level.className = `badge badge-${message.level}`; level.textContent = MESSAGE_LEVEL_LABELS[message.level] || message.level;
   setText("#messagePopupTitle", message.title); setText("#messagePopupText", message.message);
@@ -659,6 +663,251 @@ function maybeShowMessagePopup() {
 }
 document.querySelector("#messagePopupOk").addEventListener("click", async () => { await markMessageRead(document.querySelector("#messagePopup").dataset.messageId); maybeShowMessagePopup(); });
 document.querySelector("#messagePopupLater").addEventListener("click", () => { for (const message of storeState.messages) if (!message.read) storeState.snoozed.add(message.id); maybeShowMessagePopup(); });
+
+// ---- Notes (header button → Notes page): free-text notes opened in an editor, optionally with a reminder (date + time) ----
+// A note is the editor's HTML (the server reduces it to plain formatting, bullets and checklists) and its first line is the title.
+// Notes save themselves while you type. A note with a date and time is a reminder: it pops up when its time comes while the app
+// is open, is listed first until it is ticked, and reminder dates and times stay as the phone typed them (device clock throughout).
+const REMINDER_TICK_MS = 30000;
+const NOTE_SAVE_DELAY_MS = 800;
+const noteEditor = document.querySelector("#noteEditor");
+const findNote = (id) => storeState.notes.find((note) => note.id === id);
+const isReminder = (note) => Boolean(note.dueDate && note.dueTime);
+const noteDone = (note) => Boolean(note.doneAt);
+const noteStamp = (note) => note.updatedAt || note.createdAt;
+const noteBody = (note) => note.text.split("\n").slice(1).join("\n");
+const dueMoment = (dueDate, dueTime) => { const [year, month, date] = dueDate.split("-").map(Number); const [hours, minutes] = dueTime.split(":").map(Number); return new Date(year, month - 1, date, hours, minutes, 0, 0); };
+const noteDueAt = (note) => isReminder(note) ? dueMoment(note.dueDate, note.dueTime) : null;
+const noteOverdue = (note, now = new Date()) => { const due = noteDueAt(note); return Boolean(due) && !noteDone(note) && due < now; };
+const noteDueToday = (note, now = new Date()) => { const due = noteDueAt(note); return Boolean(due) && !noteDone(note) && due < addDays(startOfDay(now), 1); };
+function whenLabel(due) {
+  const dayGap = Math.round((startOfDay(due) - startOfDay(new Date())) / 86400000);
+  const day = dayGap === 0 ? "Today" : dayGap === 1 ? "Tomorrow" : dayGap === -1 ? "Yesterday" : formatShortDate(due);
+  return `${day} at ${formatClock(due)}`;
+}
+const noteWhenLabel = (note) => { const due = noteDueAt(note); return due ? whenLabel(due) : ""; };
+async function loadNotes() { storeState.notes = (await apiRequest("/api/store/notes")).notes; }
+function startNotes() {
+  stopNotes(); storeState.notesDay = startOfDay(new Date()).getTime();
+  loadNotes().then(() => { renderNotes(); checkReminders(); }).catch((error) => { showToast(error.message); renderNotes(); });
+  storeState.reminderTimer = setInterval(checkReminders, REMINDER_TICK_MS);
+}
+function stopNotes() {
+  clearInterval(storeState.reminderTimer); storeState.reminderTimer = null; storeState.notes = []; storeState.remindedIds = new Set();
+  clearTimeout(editorState.timer); Object.assign(editorState, { id: null, open: false, dirty: false, saving: null }); noteEditor.innerHTML = "";
+  document.querySelector("#reminderPopup").hidden = true; document.querySelector("#notesCount").hidden = true;
+}
+const openReminders = (notes) => notes.filter((note) => isReminder(note) && !noteDone(note)).sort((a, b) => noteDueAt(a) - noteDueAt(b));
+const otherNotes = (notes) => notes.filter((note) => !isReminder(note) || noteDone(note)).sort((a, b) => Date.parse(noteStamp(b)) - Date.parse(noteStamp(a)));
+// Checklist items inside a note, in document order, so a tick in a list can be written back to the same <li> in the HTML.
+const noteItems = (note) => [...new DOMParser().parseFromString(note.html || "", "text/html").querySelectorAll("ul.todo > li")].map((item, index) => ({ index, text: item.textContent.trim(), checked: item.dataset.checked === "true" })).filter((item) => item.text);
+const previewLines = (note) => noteBody(note).split("\n").filter((line) => line && !/^[☐☑] /.test(line));
+// One row for every list (Notes page and dashboard card): title, a short preview, the reminder time or date, and tickable checklist items.
+function noteRowHtml(note, itemLimit = Infinity) {
+  const reminder = isReminder(note) && !noteDone(note); const overdue = noteOverdue(note); const items = noteItems(note);
+  const lines = previewLines(note).slice(0, items.length ? 2 : 3); const ticked = items.filter((item) => item.checked).length;
+  const meta = reminder
+    ? `${overdue ? '<span class="badge badge-urgent">Overdue</span> · ' : ""}<span class="note-when">${escapeHtml(noteWhenLabel(note))}</span>${items.length ? ` · ${ticked} of ${items.length} done` : ""}`
+    : `${formatShortDate(new Date(noteStamp(note)))}${noteDone(note) ? ` · <span class="badge badge-completed">Reminded</span> ${escapeHtml(noteWhenLabel(note))}` : ""}${items.length ? ` · ${ticked} of ${items.length} done` : ""}`;
+  const shown = items.slice(0, itemLimit); const more = items.length - shown.length;
+  const checklist = items.length ? `<div class="note-items">${shown.map((item) => `<label class="note-item ${item.checked ? "done" : ""}"><input type="checkbox" data-item-index="${item.index}" ${item.checked ? "checked" : ""} /><span>${escapeHtml(item.text)}</span></label>`).join("")}${more > 0 ? `<button type="button" class="note-more" data-open>+${more} more</button>` : ""}</div>` : "";
+  const preview = lines.length ? `<span class="note-snippet">${escapeHtml(lines.join("\n"))}</span>` : "";
+  return `<div class="note-row ${reminder ? "reminder" : "plain"} ${overdue ? "overdue" : ""}" data-note-id="${note.id}">${reminder ? '<button type="button" class="note-check" data-toggle aria-label="Mark as done">✓</button>' : ""}<button type="button" class="item-main" data-open><strong>${escapeHtml(note.title)}</strong>${reminder ? `<small>${meta}</small>${preview}` : `${preview}<small>${meta}</small>`}</button>${checklist}</div>`;
+}
+function renderNotes() {
+  const { notes } = storeState; const reminders = openReminders(notes); const plain = otherNotes(notes);
+  const today = reminders.filter((note) => noteDueToday(note)).length; const overdue = reminders.filter((note) => noteOverdue(note)).length;
+  storeState.overdueCount = overdue;
+  document.querySelector("#noteCount").textContent = notes.length ? [plural(plain.length, "note"), reminders.length && plural(reminders.length, "reminder"), overdue && `${overdue} overdue`].filter(Boolean).join(" · ") : "No notes yet";
+  // Header badge: reminders due today or overdue and not yet done.
+  const badge = document.querySelector("#notesCount"); badge.hidden = !today; badge.textContent = today;
+  document.querySelector("#reminderSection").hidden = !reminders.length; document.querySelector("#noteListLabel").hidden = !reminders.length;
+  document.querySelector("#reminderList").innerHTML = reminders.map((note) => noteRowHtml(note)).join("");
+  const list = document.querySelector("#noteList");
+  list.innerHTML = plain.length ? plain.map((note) => noteRowHtml(note)).join("") : `<div class="empty-list">${notes.length ? "Every note here is a reminder — they are listed above." : "Nothing here yet. Tap + Note to start writing, or Reminder to set one."}</div>`;
+  renderHomeNotes();
+}
+// Dashboard card: the next three reminders and the three latest notes, with a few checklist items each.
+function renderHomeNotes() {
+  const { notes } = storeState; const reminders = openReminders(notes).slice(0, 3); const plain = otherNotes(notes).slice(0, 3);
+  document.querySelector("#homeNotesList").innerHTML = notes.length
+    ? [reminders.length && `<p class="section-label">Reminders</p><div class="note-list-inline">${reminders.map((note) => noteRowHtml(note, 4)).join("")}</div>`, plain.length && `<p class="section-label">Notes</p><div class="note-list-inline">${plain.map((note) => noteRowHtml(note, 4)).join("")}</div>`].filter(Boolean).join("")
+    : '<div class="empty-activity">No notes yet — tap See all to write one or set a reminder.</div>';
+}
+document.querySelector("#homeNotesSeeAll").addEventListener("click", () => activateStoreTab("notes"));
+document.querySelector("#notesButton").addEventListener("click", () => {
+  const page = document.querySelector(".user-page.active-user-page")?.dataset.page;
+  if (page === "note") closeNoteEditor(); else activateStoreTab(page === "notes" ? "home" : "notes");
+});
+// ---- Editor ----
+const editorState = { id: null, open: false, dirty: false, timer: null, saving: null, returnTo: "notes" };
+const editorEmpty = () => !noteEditor.innerText.replace(/​/g, "").trim();
+const updateEditorEmpty = () => noteEditor.classList.toggle("is-empty", editorEmpty());
+const setNoteStatus = (text, isError = false) => setStatus("#noteStatus", text, isError);
+async function openNoteEditor(note = null, { remind = false } = {}) {
+  if (editorState.open) await finishEditor();
+  const from = document.querySelector(".user-page.active-user-page")?.dataset.page; const returnTo = from === "home" ? "home" : "notes";
+  clearTimeout(editorState.timer); Object.assign(editorState, { id: note?.id || null, open: true, dirty: false, returnTo });
+  document.querySelector("#noteBackLabel").textContent = returnTo === "home" ? "Dashboard" : "Notes";
+  noteEditor.innerHTML = note?.html || ""; // already reduced to safe tags by the server
+  noteEditor.dataset.placeholder = remind ? "What should I remind you about?" : "Start writing…";
+  document.querySelector("#noteDate").value = note?.dueDate || (remind ? dateInputValue(new Date()) : "");
+  document.querySelector("#noteTime").value = note?.dueTime || "";
+  setReminderRow(remind || Boolean(note?.dueDate));
+  document.querySelector("#noteDeleteButton").hidden = !note;
+  setNoteStatus(""); updateEditorEmpty(); updateToolbar();
+  activateStoreTab("note");
+  if (!note) noteEditor.focus();
+  try { document.execCommand("styleWithCSS", false, false); } catch { /* old engines */ }
+}
+function setReminderRow(show) {
+  document.querySelector("#noteRemind").hidden = !show;
+  const button = document.querySelector("#noteRemindButton"); button.classList.toggle("active", show); button.setAttribute("aria-pressed", String(show));
+  renderRemindHint();
+}
+// The reminder counts only once both a date and a time are picked; until then the note saves without one.
+const reminderFields = () => { const row = document.querySelector("#noteRemind"); const dueDate = row.hidden ? "" : document.querySelector("#noteDate").value; const dueTime = row.hidden ? "" : document.querySelector("#noteTime").value; return dueDate && dueTime ? { dueDate, dueTime } : { dueDate: "", dueTime: "" }; };
+function renderRemindHint() {
+  const dueDate = document.querySelector("#noteDate").value; const dueTime = document.querySelector("#noteTime").value; const note = editorState.id && findNote(editorState.id);
+  const hint = document.querySelector("#noteRemindHint"); hint.classList.remove("error");
+  if (!dueDate && !dueTime) hint.textContent = "Pick a date and a time";
+  else if (!dueDate || !dueTime) { hint.textContent = dueDate ? "Now pick a time" : "Now pick a date"; hint.classList.add("error"); }
+  else hint.textContent = `${note && noteDone(note) && note.dueDate === dueDate && note.dueTime === dueTime ? "Done · was due" : dueMoment(dueDate, dueTime) < new Date() ? "This time has already passed · due" : "Reminder set for"} ${whenLabel(dueMoment(dueDate, dueTime))}`;
+}
+function scheduleNoteSave() { editorState.dirty = true; setNoteStatus("Saving…"); clearTimeout(editorState.timer); editorState.timer = setTimeout(saveNote, NOTE_SAVE_DELAY_MS); }
+// One request at a time; a change made while a save is in flight is saved right after it.
+async function saveNote(options = {}) {
+  clearTimeout(editorState.timer);
+  if (editorState.saving) { await editorState.saving; }
+  if (!editorState.dirty || !editorState.open || editorEmpty()) { if (!editorState.dirty) setNoteStatus(editorState.id ? "Saved" : ""); return; }
+  const id = editorState.id; const payload = { html: noteEditor.innerHTML, ...reminderFields() };
+  editorState.dirty = false;
+  const run = (async () => {
+    try {
+      const result = await apiRequest(id ? `/api/store/notes/${encodeURIComponent(id)}` : "/api/store/notes", { method: id ? "PATCH" : "POST", body: JSON.stringify(payload), keepalive: Boolean(options.keepalive) });
+      const existing = findNote(result.note.id);
+      if (existing) Object.assign(existing, result.note); else storeState.notes.unshift(result.note);
+      if (!id) { editorState.id = result.note.id; document.querySelector("#noteDeleteButton").hidden = false; }
+      if (!editorState.dirty) setNoteStatus("Saved");
+      renderNotes(); renderRemindHint(); checkReminders();
+    } catch (error) { editorState.dirty = true; setNoteStatus(error.message, true); }
+  })();
+  editorState.saving = run; await run; if (editorState.saving === run) editorState.saving = null;
+  if (editorState.dirty && editorState.open) return saveNote(options);
+}
+// Leaving the editor: an emptied note is deleted (a new empty one is simply dropped), anything else is saved.
+async function finishEditor() {
+  if (!editorState.open) return; clearTimeout(editorState.timer);
+  if (editorState.saving) await editorState.saving;
+  if (editorEmpty()) {
+    if (editorState.id) { try { await apiRequest(`/api/store/notes/${encodeURIComponent(editorState.id)}`, { method: "DELETE" }); } catch { /* it will still be there next time */ } storeState.notes = storeState.notes.filter((note) => note.id !== editorState.id); }
+  } else if (editorState.dirty) await saveNote();
+  Object.assign(editorState, { id: null, open: false, dirty: false }); renderNotes();
+}
+async function closeNoteEditor() { const { returnTo } = editorState; await finishEditor(); activateStoreTab(returnTo); }
+document.querySelector("#addNoteButton").addEventListener("click", () => openNoteEditor());
+document.querySelector("#addReminderButton").addEventListener("click", () => openNoteEditor(null, { remind: true }));
+document.querySelector("#noteBack").addEventListener("click", closeNoteEditor);
+document.querySelector("#noteDeleteButton").addEventListener("click", async () => {
+  const id = editorState.id; if (!id || !window.confirm("Delete this note?")) return;
+  clearTimeout(editorState.timer); if (editorState.saving) await editorState.saving;
+  try { await apiRequest(`/api/store/notes/${encodeURIComponent(id)}`, { method: "DELETE" }); storeState.notes = storeState.notes.filter((note) => note.id !== id); const { returnTo } = editorState; Object.assign(editorState, { id: null, open: false, dirty: false }); renderNotes(); activateStoreTab(returnTo); showToast("Note deleted"); }
+  catch (error) { setNoteStatus(error.message, true); }
+});
+document.querySelector("#noteRemindButton").addEventListener("click", () => {
+  const show = document.querySelector("#noteRemind").hidden;
+  if (show && !document.querySelector("#noteDate").value) document.querySelector("#noteDate").value = dateInputValue(new Date());
+  setReminderRow(show); if (show) document.querySelector("#noteTime").focus(); scheduleNoteSave();
+});
+document.querySelector("#noteRemindClear").addEventListener("click", () => { document.querySelector("#noteDate").value = ""; document.querySelector("#noteTime").value = ""; setReminderRow(false); scheduleNoteSave(); });
+document.querySelector("#noteDate").addEventListener("change", () => { renderRemindHint(); scheduleNoteSave(); });
+document.querySelector("#noteTime").addEventListener("change", () => { renderRemindHint(); scheduleNoteSave(); });
+noteEditor.addEventListener("input", () => { updateEditorEmpty(); scheduleNoteSave(); });
+// Pasted content comes in as plain text so the note keeps only the editor's own formatting.
+noteEditor.addEventListener("paste", (event) => { event.preventDefault(); document.execCommand("insertText", false, event.clipboardData.getData("text/plain")); });
+// Formatting toolbar: mousedown is cancelled so the editor keeps its selection while the button is tapped.
+const selectionAncestor = (name) => { let node = window.getSelection()?.anchorNode; if (!node || !noteEditor.contains(node)) return null; while (node && node !== noteEditor) { if (node.nodeName === name) return node; node = node.parentNode; } return null; };
+function updateToolbar() {
+  const list = selectionAncestor("UL");
+  document.querySelectorAll("#noteToolbar [data-cmd]").forEach((button) => { let active = false; try { active = document.queryCommandState(button.dataset.cmd); } catch { /* unsupported */ } button.classList.toggle("active", active); });
+  document.querySelector('#noteToolbar [data-list="bullet"]').classList.toggle("active", Boolean(list) && !list.classList.contains("todo"));
+  document.querySelector('#noteToolbar [data-list="todo"]').classList.toggle("active", Boolean(list?.classList.contains("todo")));
+}
+// Bullets and checklists are both <ul>; a checklist is the one with class "todo". Choosing the kind already in use turns the list off.
+function toggleList(kind) {
+  noteEditor.focus(); const current = selectionAncestor("UL");
+  if (current && current.classList.contains("todo") === (kind === "todo")) document.execCommand("insertUnorderedList");
+  else { if (!current) document.execCommand("insertUnorderedList"); const list = selectionAncestor("UL"); if (list) list.classList.toggle("todo", kind === "todo"); }
+  updateEditorEmpty(); scheduleNoteSave(); updateToolbar();
+}
+document.querySelector("#noteToolbar").addEventListener("mousedown", (event) => event.preventDefault());
+document.querySelector("#noteToolbar").addEventListener("click", (event) => {
+  const button = event.target.closest("button"); if (!button) return;
+  if (button.dataset.list) toggleList(button.dataset.list);
+  else { noteEditor.focus(); document.execCommand(button.dataset.cmd); scheduleNoteSave(); updateToolbar(); }
+});
+document.addEventListener("selectionchange", () => { if (editorState.open) updateToolbar(); });
+// Checklist items: tapping the box at the left of a line ticks it; a new line after a ticked item starts unticked.
+noteEditor.addEventListener("click", (event) => {
+  const item = event.target.closest("ul.todo > li"); if (!item || !noteEditor.contains(item)) return;
+  if (event.clientX - item.getBoundingClientRect().left > 28) return;
+  event.preventDefault(); if (item.dataset.checked === "true") delete item.dataset.checked; else item.dataset.checked = "true"; scheduleNoteSave();
+});
+noteEditor.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" || !selectionAncestor("UL")?.classList.contains("todo")) return;
+  setTimeout(() => { const item = selectionAncestor("LI"); if (item && !item.textContent.trim()) delete item.dataset.checked; }, 0);
+});
+// Leaving the page (tab bar, another app, closing the browser) still saves what was typed.
+userShell.addEventListener("page:change", (event) => { if (editorState.open && event.detail !== "note") finishEditor(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && editorState.open && editorState.dirty) saveNote({ keepalive: true }); });
+window.addEventListener("pagehide", () => { if (editorState.open && editorState.dirty) saveNote({ keepalive: true }); });
+// ---- Lists: tick a reminder or a checklist item from the Notes page or the dashboard card; tap anything else to open the note ----
+// The screen updates first and the note is saved behind it; on failure it is re-fetched so the screen matches the server.
+async function patchNote(note, payload) {
+  try { Object.assign(note, (await apiRequest(`/api/store/notes/${encodeURIComponent(note.id)}`, { method: "PATCH", body: JSON.stringify(payload) })).note); }
+  catch (error) { showToast(error.message); try { Object.assign(note, (await apiRequest(`/api/store/notes/${encodeURIComponent(note.id)}`)).note); } catch { /* keep what we have */ } }
+  renderNotes();
+}
+function toggleReminder(note) { const done = !noteDone(note); note.doneAt = done ? new Date().toISOString() : null; renderNotes(); return patchNote(note, { done }); }
+// A tick in a list is written into the note's own HTML (the same <li> the editor shows), so both stay in step.
+function setNoteItem(note, index, checked) {
+  const doc = new DOMParser().parseFromString(note.html || "", "text/html"); const item = doc.querySelectorAll("ul.todo > li")[index]; if (!item) return;
+  if (checked) item.setAttribute("data-checked", "true"); else item.removeAttribute("data-checked");
+  note.html = doc.body.innerHTML; renderNotes(); patchNote(note, { html: note.html });
+}
+function bindNoteList(container) {
+  container.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-note-id]"); if (!row) return; const note = findNote(row.dataset.noteId); if (!note) return;
+    if (event.target.closest("[data-toggle]")) toggleReminder(note);
+    else if (event.target.closest("[data-open]")) openNoteEditor(note);
+  });
+  container.addEventListener("change", (event) => {
+    const box = event.target.closest("input[data-item-index]"); if (!box) return;
+    const note = findNote(box.closest("[data-note-id]").dataset.noteId); if (note) setNoteItem(note, Number(box.dataset.itemIndex), box.checked);
+  });
+}
+bindNoteList(document.querySelector(".user-page[data-page=notes]")); bindNoteList(document.querySelector("#homeNotes"));
+// ---- Reminder popup: when a reminder's time comes today while the app is open ----
+// "Mark done" ticks it, "Later" keeps it quiet until the next sign-in. Older overdue reminders just show in the list with an Overdue badge.
+const dueReminders = (now = new Date()) => storeState.notes.filter((note) => isReminder(note) && !noteDone(note) && !storeState.remindedIds.has(note.id) && noteDueAt(note) <= now && sameDay(noteDueAt(note), now)).sort((a, b) => noteDueAt(a) - noteDueAt(b));
+function checkReminders() {
+  if (userShell.hidden) return;
+  const day = startOfDay(new Date()).getTime();
+  if (storeState.notesDay !== day) { storeState.notesDay = day; renderNotes(); } // past midnight: "Today" / "Tomorrow" labels move
+  else if (storeState.notes.filter((note) => noteOverdue(note)).length !== storeState.overdueCount) renderNotes(); // an "Overdue" badge just became due
+  maybeShowReminderPopup();
+}
+function maybeShowReminderPopup() {
+  const popup = document.querySelector("#reminderPopup"); const pending = dueReminders();
+  if (!pending.length || !document.querySelector("#messagePopup").hidden) { popup.hidden = true; return; }
+  const note = pending[0]; popup.dataset.noteId = note.id;
+  setText("#reminderPopupTitle", note.title); setText("#reminderPopupText", noteBody(note).slice(0, 300)); setText("#reminderPopupMeta", noteWhenLabel(note));
+  setText("#reminderPopupCount", pending.length > 1 ? `${pending.length - 1} more reminder${pending.length > 2 ? "s" : ""} after this` : "");
+  popup.hidden = false;
+}
+document.querySelector("#reminderPopupDone").addEventListener("click", () => { const note = findNote(document.querySelector("#reminderPopup").dataset.noteId); if (note) { storeState.remindedIds.add(note.id); toggleReminder(note); } maybeShowReminderPopup(); });
+document.querySelector("#reminderPopupLater").addEventListener("click", () => { const note = findNote(document.querySelector("#reminderPopup").dataset.noteId); if (note) storeState.remindedIds.add(note.id); maybeShowReminderPopup(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && storeState.reminderTimer) checkReminders(); });
 function changeCart(id, delta) {
   const item = findItem(id); if (!item) return;
   const next = (storeState.cart.get(id) || 0) + delta;
@@ -978,7 +1227,7 @@ document.querySelector("#storePasswordForm").addEventListener("submit", async (e
 });
 
 function signOut() {
-  stopDashboard(); stopStoreMessages(); adminSettings.data = null; landing.lastDay = null;
+  stopDashboard(); stopStoreMessages(); stopNotes(); adminSettings.data = null; landing.lastDay = null;
   localStorage.removeItem("ailexityAuthToken");
   sessionStorage.removeItem("ailexityAuthToken");
   authToken = null; storeState.profile = null;

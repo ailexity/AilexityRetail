@@ -255,7 +255,8 @@
 
         <!-- ===== RETAILER: store account ===== -->
         <section class="user-shell" id="userShell" aria-label="Retailer workspace" hidden>
-          <header class="user-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="userPageTitle">Dashboard</h2></header>
+          <!-- Notes button: opens the Notes page (not on the tab bar); the count is what is due today or overdue. -->
+          <header class="user-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="userPageTitle">Dashboard</h2><button type="button" class="header-button" id="notesButton" aria-label="Notes and reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16.5" rx="2.5" /><path d="M9 2.5v3M15 2.5v3" /><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4" /></svg><i class="tab-count" id="notesCount" hidden></i></button></header>
           <div class="user-pages">
             <section class="user-page active-user-page" data-page="home" aria-label="Retailer dashboard">
               <p class="greeting" id="userGreeting">Good morning</p><h1>Dashboard</h1>
@@ -284,7 +285,37 @@
                 <article class="tile-warn"><span>Low stock</span><strong id="homeItemsLow">–</strong></article>
                 <article class="tile-danger"><span>Out of stock</span><strong id="homeItemsOut">–</strong></article>
               </div>
+              <!-- Notes & reminders: the next few reminders and latest notes; checklist items can be ticked right here. -->
+              <article class="activity-card store-messages home-notes" id="homeNotes"><div class="card-heading"><strong>Notes &amp; reminders</strong><button type="button" id="homeNotesSeeAll">See all</button></div><div id="homeNotesList"><div class="empty-activity">Loading…</div></div></article>
               <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail for growing stores</small></span></footer>
+            </section>
+
+            <!-- Notes: opened from the header button. A list of notes (tap one to open it) and reminders (notes with a date and time). -->
+            <section class="user-page" data-page="notes" aria-label="Notes page">
+              <p class="greeting">Notes &amp; reminders</p><h1>Notes</h1>
+              <div class="user-toolbar"><span id="noteCount">No notes yet</span><span class="note-actions"><button type="button" class="ghost-button" id="addReminderButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>Reminder</button><button type="button" id="addNoteButton">+ Note</button></span></div>
+              <div id="reminderSection" hidden><p class="section-label">Reminders</p><article class="item-list note-list" id="reminderList"></article></div>
+              <p class="section-label" id="noteListLabel" hidden>Notes</p>
+              <article class="item-list note-list" id="noteList"><div class="empty-list">Nothing here yet. Tap + Note to start writing, or Reminder to set one.</div></article>
+            </section>
+
+            <!-- Note editor: one note open for writing. Saves by itself as you type; the first line is the note's title. -->
+            <section class="user-page" data-page="note" aria-label="Note editor">
+              <h1>Note</h1>
+              <div class="note-editor-top">
+                <button type="button" class="note-back" id="noteBack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg><span id="noteBackLabel">Notes</span></button>
+                <span class="note-editor-status" id="noteStatus" role="status"></span>
+                <button type="button" class="note-tool" id="noteRemindButton" aria-label="Set a reminder" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg></button>
+                <button type="button" class="note-tool" id="noteDeleteButton" aria-label="Delete note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M9.5 7V4.5h5V7" /><path d="M7 7l.8 12.5h8.4L17 7" /><path d="M10 10.5v6M14 10.5v6" /></svg></button>
+              </div>
+              <div class="note-remind" id="noteRemind" hidden>
+                <span>Remind me on</span><input id="noteDate" type="date" aria-label="Reminder date" /><input id="noteTime" type="time" aria-label="Reminder time" /><button type="button" class="note-remind-clear" id="noteRemindClear" aria-label="Remove reminder">×</button>
+                <small id="noteRemindHint"></small>
+              </div>
+              <div class="note-toolbar" id="noteToolbar" role="toolbar" aria-label="Formatting">
+                <button type="button" data-cmd="bold" aria-label="Bold"><b>B</b></button><button type="button" data-cmd="italic" aria-label="Italic"><i>I</i></button><button type="button" data-cmd="underline" aria-label="Underline"><u>U</u></button><button type="button" data-cmd="strikeThrough" aria-label="Strikethrough"><s>S</s></button><button type="button" data-list="bullet" aria-label="Bullet list"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="7" r="1.3" /><circle cx="5.5" cy="12" r="1.3" /><circle cx="5.5" cy="17" r="1.3" /><path d="M10 7h9M10 12h9M10 17h9" /></svg></button><button type="button" data-list="todo" aria-label="Checklist"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="6" height="6" rx="1.5" /><path d="m5 7.5 1.3 1.3L9 6" /><rect x="3.5" y="13.5" width="6" height="6" rx="1.5" /><path d="M13 7.5h7M13 16.5h7" /></svg></button>
+              </div>
+              <div class="note-editor" id="noteEditor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="Start writing…"></div>
             </section>
 
             <section class="user-page" data-page="items" aria-label="Items page">
@@ -442,6 +473,17 @@
               <small id="messagePopupMeta"></small>
               <div class="form-actions"><button type="button" id="messagePopupOk">Got it</button><button type="button" class="ghost-button" id="messagePopupLater">Later</button></div>
               <small class="message-popup-count" id="messagePopupCount"></small>
+            </div>
+          </div>
+          <!-- Reminder popup: a reminder whose time has come while the app is open (any store page). -->
+          <div class="message-popup" id="reminderPopup" hidden role="dialog" aria-modal="true" aria-labelledby="reminderPopupTitle">
+            <div class="message-popup-card">
+              <span class="badge badge-important">Reminder</span>
+              <h2 id="reminderPopupTitle"></h2>
+              <p id="reminderPopupText"></p>
+              <small id="reminderPopupMeta"></small>
+              <div class="form-actions"><button type="button" id="reminderPopupDone">Mark done</button><button type="button" class="ghost-button" id="reminderPopupLater">Later</button></div>
+              <small class="message-popup-count" id="reminderPopupCount"></small>
             </div>
           </div>
           <div class="cart-backdrop" id="cartBackdrop" hidden></div>

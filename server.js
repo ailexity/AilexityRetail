@@ -61,6 +61,12 @@ const MESSAGES_FILE = path.join(__dirname, "data", "messages.json");
 const FEEDBACK_FILE = path.join(__dirname, "data", "feedback.json");
 const FEEDBACK_CATEGORIES = ["feedback", "issue", "request", "other"];
 const readFeedback = () => readJson(FEEDBACK_FILE, { feedback: [] });
+// A store's own notes (data/notes.json): free text written in the app's editor, optionally with a reminder date and time.
+// Private to the store; the superadmin never sees them.
+const NOTES_FILE = path.join(__dirname, "data", "notes.json");
+const MAX_NOTES_PER_STORE = 500;
+const MAX_NOTE_HTML = 20000;
+const readNotes = () => readJson(NOTES_FILE, { notes: [] });
 const feedbackStatus = (item) => (item.resolvedAt ? "resolved" : item.seenAt ? "seen" : "new");
 const feedbackView = (item) => ({ ...item, status: feedbackStatus(item) });
 const MESSAGE_LEVELS = ["info", "important", "urgent"];
@@ -206,6 +212,62 @@ function itemInput(input, existing = {}, defaultLow = DEFAULT_LOW_STOCK) {
   if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) return { error: "Low-stock alert must be a whole number, 0 or more" };
   return { name, sku, category, price: toMoney(price), quantity, lowStockThreshold };
 }
+// Note content is the editor's HTML reduced to a fixed whitelist: text formatting, line breaks, bullet lists and checklists
+// (<ul class="todo"> with <li data-checked="true">). Every other tag and every attribute is dropped, so the stored HTML is
+// safe to put straight back into the page.
+const NOTE_TAGS = new Set(["b", "strong", "i", "em", "u", "s", "strike", "br", "div", "p", "ul", "ol", "li"]);
+function cleanNoteHtml(html) {
+  return String(html ?? "").replace(/<!--[\s\S]*?-->/g, "").split(/(<[^>]*>)/).map((part) => {
+    if (!part.startsWith("<")) return part.replace(/[<>]/g, "");
+    const match = part.match(/^<(\/?)([a-z0-9]+)([^>]*)>$/i); if (!match) return "";
+    const tag = match[2].toLowerCase(); if (!NOTE_TAGS.has(tag)) return "";
+    if (tag === "br") return match[1] ? "" : "<br>";
+    if (match[1]) return `</${tag}>`;
+    if (tag === "ul" && /\bclass="todo"/.test(match[3])) return '<ul class="todo">';
+    if (tag === "li" && /\bdata-checked="true"/.test(match[3])) return '<li data-checked="true">';
+    return `<${tag}>`;
+  }).join("");
+}
+// Plain-text version of a note for previews, the reminder popup and the title: one line per block, checklist items marked ☐ / ☑.
+function noteText(html) {
+  let todo = false;
+  const text = html.replace(/<[^>]*>/g, (tag) => {
+    if (tag === '<ul class="todo">') { todo = true; return "\n"; }
+    if (tag === "</ul>") { todo = false; return "\n"; }
+    if (tag === '<li data-checked="true">') return "\n☑ ";
+    if (tag === "<li>") return todo ? "\n☐ " : "\n• ";
+    return /^<(br|\/div|\/p|\/li|div|p)>$/.test(tag) ? "\n" : "";
+  });
+  return text.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&")
+    .split("\n").map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n");
+}
+// The title is the first line, without a checklist / bullet marker when the note starts with a list.
+const noteTitle = (text) => (text.split("\n")[0] || "").replace(/^[☐☑•] /, "").slice(0, 80);
+// Note schema: `html` (the editor content, cleaned as above, <= 20000 chars) from which `text` and `title` (the first line, <= 80 chars)
+// are derived; an optional reminder as `dueDate` ("YYYY-MM-DD") + `dueTime` ("HH:MM"), kept exactly as typed on the phone (local
+// time, never converted). Like itemInput, fields missing from `input` fall back to `existing`.
+function noteInput(input, existing = {}) {
+  const html = input.html === undefined ? (existing.html || "") : cleanNoteHtml(input.html);
+  const dueDate = String(input.dueDate ?? existing.dueDate ?? "").trim();
+  const dueTime = String(input.dueTime ?? existing.dueTime ?? "").trim();
+  if (html.length > MAX_NOTE_HTML) return { error: "This note is too long" };
+  const text = noteText(html); const title = noteTitle(text);
+  if (!text) return { error: "Write something first" };
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) return { error: "Invalid date" };
+  if (dueTime && !/^\d{2}:\d{2}$/.test(dueTime)) return { error: "Invalid time" };
+  if (Boolean(dueDate) !== Boolean(dueTime)) return { error: dueDate ? "Pick a time for the reminder" : "Pick a date for the reminder" };
+  return { html, text, title, dueDate, dueTime };
+}
+// Notes written by the first version of the editor (title / text / items fields, no html) are shown as the same content.
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
+function normalizeNote(note) {
+  if (note.html !== undefined) return note;
+  const lines = [note.title, ...String(note.text || "").split("\n")].map((line) => String(line || "").trim()).filter(Boolean).map((line) => `<div>${escapeHtml(line)}</div>`);
+  const items = Array.isArray(note.items) && note.items.length ? `<ul class="todo">${note.items.map((item) => `<li${item.done || item.doneOn ? ' data-checked="true"' : ""}>${escapeHtml(item.text || "")}</li>`).join("")}</ul>` : "";
+  const html = lines.join("") + items; const text = noteText(html);
+  const { type, items: _items, repeat, pinned, doneOn, ...rest } = note;
+  return { ...rest, html, text, title: noteTitle(text), dueDate: type === "reminder" ? note.dueDate || "" : "", dueTime: type === "reminder" ? note.dueTime || "" : "", doneAt: note.doneAt || null };
+}
 async function route(request, url) {
   if (request.method === "GET" && url.pathname === "/api/auth/session") {
     const session = anyAuth(request);
@@ -262,7 +324,7 @@ async function route(request, url) {
     const filename = `sales-report-${dayKey(from, tz)}-to-${dayKey(to - 1, tz)}.pdf`;
     return { status: 200, body: pdf, headers: { "content-type": "application/pdf", "content-disposition": `attachment; filename="${filename}"`, "content-length": pdf.length, "cache-control": "no-store" } };
   }
-  const storeRoute = url.pathname.match(/^\/api\/store\/(items|bills)(?:\/([^/]+))?$/);
+  const storeRoute = url.pathname.match(/^\/api\/store\/(items|bills|notes)(?:\/([^/]+))?$/);
   if (url.pathname === "/api/store/feedback") {
     const storeUser = await storeAuth(request); if (!storeUser) return json(401, { error: "Store sign-in required" });
     const data = await readFeedback();
@@ -356,6 +418,29 @@ async function route(request, url) {
         Object.assign(item, input, { updatedAt: new Date().toISOString() }); await writeJson(ITEMS_FILE, data); return json(200, { item });
       }
       if (request.method === "DELETE") { data.items.splice(data.items.indexOf(item), 1); await writeJson(ITEMS_FILE, data); return json(200, { message: "Item deleted" }); }
+    }
+    if (collection === "notes") {
+      const data = await readNotes(); data.notes = data.notes.map(normalizeNote);
+      if (request.method === "GET" && !id) return json(200, { notes: data.notes.filter(mine).sort((a, b) => Date.parse(b.updatedAt || b.createdAt) - Date.parse(a.updatedAt || a.createdAt)) });
+      if (request.method === "POST" && !id) {
+        if (data.notes.filter(mine).length >= MAX_NOTES_PER_STORE) return json(409, { error: `You can keep up to ${MAX_NOTES_PER_STORE} notes — delete some old ones first` });
+        const input = noteInput(await body(request)); if (input.error) return json(400, { error: input.error });
+        const note = { id: crypto.randomUUID(), storeId: storeUser.id, ...input, doneAt: null, createdAt: new Date().toISOString(), updatedAt: null };
+        data.notes.push(note); await writeJson(NOTES_FILE, data); return json(201, { note });
+      }
+      const note = id && data.notes.find((entry) => entry.id === id && mine(entry));
+      if (!note) return json(404, { error: "Note not found" });
+      if (request.method === "GET") return json(200, { note });
+      if (request.method === "PATCH") {
+        // Edits the fields sent. Changing or removing the reminder reopens it; `done` ticks or unticks it.
+        const raw = await body(request); const now = new Date().toISOString();
+        const input = noteInput(raw, note); if (input.error) return json(400, { error: input.error });
+        if (input.dueDate !== note.dueDate || input.dueTime !== note.dueTime) note.doneAt = null;
+        Object.assign(note, input);
+        if (raw.done !== undefined) note.doneAt = raw.done && note.dueDate ? now : null;
+        note.updatedAt = now; await writeJson(NOTES_FILE, data); return json(200, { note });
+      }
+      if (request.method === "DELETE") { data.notes.splice(data.notes.indexOf(note), 1); await writeJson(NOTES_FILE, data); return json(200, { message: "Note deleted" }); }
     }
     if (collection === "bills") {
       const data = await readBills();
