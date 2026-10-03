@@ -810,13 +810,20 @@ const STATIC_ALIASES = { "/": "/index.html", "/landing": "/index.html", "/downlo
 // device build ("Build/..."), which Chrome itself stopped sending years ago: that combination is sent on to the app. Remove
 // this once the Android app is rebuilt to open /login.
 const isOldAndroidApp = (ua = "") => /Android/.test(ua) && /\bBuild\//.test(ua) && !/; ?wv\b|Version\/\d|SamsungBrowser|MiuiBrowser|UCBrowser|OPR\/|EdgA\/|Firefox\/|FBAN|FBAV|Instagram|Line\//.test(ua);
+// The app's folder also holds server code, .env, data/ and .git, so only the files named here
+// (plus /assets/, which holds nothing but public images) may be fetched by URL. Everything else
+// returns the same 404 as a missing file. A new client-side file must be added to this list.
+const PUBLIC_FILES = new Set(["/index.html", "/login.html", "/invoice.html", "/styles.css", "/landing.css", "/invoice.css", "/app.js", "/landing.js", "/invoice-template.js", "/icon-192.png", "/icon-512.png", "/background1.jpeg", "/manifest.webmanifest"]);
+const isPublicPath = (p) => PUBLIC_FILES.has(p) || (p.startsWith("/assets/") && /^[A-Za-z0-9/_.-]+$/.test(p) && !p.includes(".."));
 async function serveStatic(request, response, url) {
   if ((url.pathname === "/" || url.pathname === "/index.html") && isOldAndroidApp(request.headers["user-agent"])) {
     response.writeHead(302, { location: `/login${url.search}`, "cache-control": "no-store", vary: "User-Agent" }); return response.end();
   }
   // /invoice/<token> is the customer-facing receipt; the page reads the token back out of the path.
-  const requested = /^\/invoice\/[A-Za-z0-9_-]{8,64}$/.test(url.pathname) ? "/invoice.html" : STATIC_ALIASES[url.pathname] || url.pathname; const filePath = path.resolve(__dirname, `.${requested}`);
-  if (!filePath.startsWith(__dirname)) return send(response, json(403, { error: "Forbidden" }));
+  const requested = /^\/invoice\/[A-Za-z0-9_-]{8,64}$/.test(url.pathname) ? "/invoice.html" : STATIC_ALIASES[url.pathname] || url.pathname;
+  if (!isPublicPath(requested)) return send(response, json(404, { error: "Not found" }));
+  const filePath = path.resolve(__dirname, `.${requested}`);
+  if (!filePath.startsWith(__dirname)) return send(response, json(404, { error: "Not found" }));
   try { const content = await fs.readFile(filePath); const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".jpeg": "image/jpeg", ".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml", ".ico": "image/x-icon", ".woff2": "font/woff2", ".json": "application/json", ".webmanifest": "application/manifest+json", ".apk": "application/vnd.android.package-archive" }; response.writeHead(200, { "content-type": types[path.extname(filePath)] || "application/octet-stream" }); response.end(content); } catch { send(response, json(404, { error: "Not found" })); }
 }
 const server = http.createServer(async (request, response) => { try { const url = new URL(request.url, `http://${request.headers.host || "localhost"}`); const result = await route(request, url); if (result) return send(response, result); if (url.pathname.startsWith("/api/")) return send(response, json(404, { error: "API route not found" })); return serveStatic(request, response, url); } catch (error) { console.error(error); send(response, json(500, { error: error.message || "Internal server error" })); } });
