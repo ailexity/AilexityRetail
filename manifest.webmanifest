@@ -2,7 +2,7 @@
   "name": "Ailexity Retail",
   "short_name": "Ailexity",
   "description": "Billing, stock, orders and WhatsApp invoices for your store.",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

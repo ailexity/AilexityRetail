@@ -1,0 +1,4 @@
+{
+  "minAndroid": "7.0",
+  "notes": "minSdkVersion 24 (Android 7.0), targetSdkVersion 36. Version is read from the package file name unless it is set here."
+}

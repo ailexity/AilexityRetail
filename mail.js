@@ -1,11 +1,8 @@
 // The e-mails the platform sends: a white-themed HTML template (table layout + inline styles, which is what mail clients
-// render reliably) with a plain-text twin, and the three messages built on it.
+// render reliably) with a plain-text twin, and the messages built on it. Stores sign themselves up, so nothing here
+// carries an activation key, a temporary password for a new account, or a plan.
 
 const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-const PLAN_LABELS = { 30: "Starter · 30 days", 90: "Standard · 90 days", 365: "Annual · 1 year" };
-export const planName = (days) => (PLAN_LABELS[Number(days)] ? PLAN_LABELS[Number(days)].split(" · ")[0] : Number(days) ? `${days}-day` : "Lifetime");
-export const planLabel = (days) => (Number(days) ? PLAN_LABELS[Number(days)] || `${days} days` : "Lifetime · no expiry");
-
 const FONT = "-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const MONO = "'SF Mono',Menlo,Consolas,'Liberation Mono',monospace";
 const bar = (height) => `<td style="width:5px;height:${height}px;background:#171717;border-radius:3px 3px 1px 1px;font-size:0;line-height:0;">&nbsp;</td>`;
@@ -54,38 +51,27 @@ export function mailTemplate({ platform, greeting, title, intro, credentials = [
   return { html, text };
 }
 
-export function otpMail({ user, code, minutes, platform }) {
+export function welcomeMail({ user, platform, appUrl }) {
   const name = platform.platformName || "Ailexity Retail";
-  return { subject: `${name}: your verification code is ${code}`, ...mailTemplate({
-    platform, greeting: `Hi ${user.name},`, title: "Your verification code",
-    intro: `${name} is setting up a store account for ${user.storeName || "your store"}. Share this code with the person creating your account so they can confirm this email address is yours.`,
-    credentials: [["Verification code", code, `Expires in ${minutes} minutes`]],
-    note: "Nothing happens without the code — if you weren't expecting this, simply ignore it.",
-  }) };
-}
-
-export function welcomeMail({ user, activationKey, temporaryPassword, platform, appUrl }) {
-  const name = platform.platformName || "Ailexity Retail";
-  return { subject: `Welcome to ${name} — your sign-in details for ${user.storeName || user.name}`, ...mailTemplate({
+  return { subject: `Welcome to ${name} — ${user.storeName || user.name} is ready`, ...mailTemplate({
     platform, greeting: `Hi ${user.name},`, title: `Welcome to ${name}`,
-    intro: `Your store account for ${user.storeName || user.name} is ready. Sign in with the details below; the activation key is asked for once, and you'll choose your own password after your first sign-in.`,
-    credentials: [["Sign-in email", user.email], ["Temporary password", temporaryPassword, "For your first sign-in only"], ["Activation key", activationKey, "Asked for once, on your first sign-in"]],
-    steps: [`Open ${name} and tap Sign in.`, "Enter your email and the temporary password.", "When asked, paste the activation key.", "Go to Profile → Security and set your own password."],
+    intro: `Your store account for ${user.storeName || user.name} is set up and already signed in on the device you created it from. Nothing to activate and nothing to pay — just add your items and start billing.`,
+    credentials: [["Sign-in email", user.email], ["Store", user.storeName || user.name]],
+    steps: ["Add your fastest-moving items under Items.", "Set your tax rate under Profile → Billing & invoices.", "Open Billing and ring up your first sale."],
     cta: appUrl ? { label: `Open ${name}`, url: appUrl } : null,
-    note: `Plan: ${planLabel(user.activationDurationDays)} — it starts on your first sign-in. Keep this email private; anyone with these details can sign in to your store.`,
+    note: "Keep this email private. If you ever forget your password, use Forgot? on the sign-in screen.",
   }) };
 }
 
-export function planExpiryMail({ user, daysLeft, expiresOn, platform, appUrl }) {
-  const name = platform.platformName || "Ailexity Retail"; const when = daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
-  const support = [platform.supportEmail, platform.supportPhone].filter(Boolean).join(" · ");
-  return { subject: `${name}: your plan expires ${when} (${expiresOn})`, ...mailTemplate({
-    platform, greeting: `Hi ${user.name},`, title: `Your plan expires ${when}`,
-    intro: `The ${planName(user.activationDurationDays)} plan for ${user.storeName || user.name} ends on ${expiresOn}. After that, sign-in to ${name} is blocked until the plan is extended, so please arrange the renewal now.`,
-    credentials: [["Store", user.storeName || user.name], ["Plan ends", expiresOn, daysLeft === 1 ? "1 day left" : `${daysLeft} days left`]],
-    steps: [support ? `Contact ${name} at ${support} to extend the plan.` : `Contact ${name} to extend the plan.`, "Once it is extended these reminders stop automatically."],
+export function forgotPasswordMail({ user, temporaryPassword, platform, appUrl }) {
+  const name = platform.platformName || "Ailexity Retail";
+  return { subject: `${name}: your temporary password`, ...mailTemplate({
+    platform, greeting: `Hi ${user.name},`, title: "Here is a temporary password",
+    intro: `Someone asked to reset the password for ${user.email}. Sign in with the temporary password below and choose a new one straight away. If that was not you, ignore this email — your current password still works until this one is used.`,
+    credentials: [["Temporary password", temporaryPassword]],
+    steps: ["Sign in with your email and the temporary password.", "Go to Profile → Security and set a new password."],
     cta: appUrl ? { label: `Open ${name}`, url: appUrl } : null,
-    note: "You'll get one reminder a day until the plan is extended or it ends.",
+    note: "This password works until you set a new one.",
   }) };
 }
 
@@ -93,10 +79,10 @@ export function resetMail({ user, temporaryPassword, platform, appUrl }) {
   const name = platform.platformName || "Ailexity Retail";
   return { subject: `${name}: your password was reset`, ...mailTemplate({
     platform, greeting: `Hi ${user.name},`, title: "Your password was reset",
-    intro: `The ${name} superadmin reset the password for ${user.email}. Sign in with the temporary password below and choose a new one straight away.`,
+    intro: `The ${name} team reset the password for ${user.email}. Sign in with the temporary password below and choose a new one straight away.`,
     credentials: [["Temporary password", temporaryPassword]],
     steps: ["Sign in with your email and the temporary password.", "Go to Profile → Security and set a new password."],
     cta: appUrl ? { label: `Open ${name}`, url: appUrl } : null,
-    note: "If you did not ask for a reset, contact the superadmin before signing in.",
+    note: "If you did not ask for a reset, change your password as soon as you are signed in.",
   }) };
 }

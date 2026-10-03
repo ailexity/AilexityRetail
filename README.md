@@ -1,17 +1,89 @@
 # Ailexity Retail
 
-Frontend and Node backend for Ailexity Retail: a superadmin platform workspace plus a per-store workspace for billing, stock, orders, WhatsApp invoices and reports. One process, no build step, JSON files as the datastore.
+Frontend and Node backend for Ailexity Retail: a per-store workspace for billing, stock, orders, WhatsApp invoices and reports, plus a superadmin console that watches over the platform. Stores sign themselves up — there is no invitation, no activation key and no subscription. One process, no build step, JSON files as the datastore.
 
 ## Run locally
 
 1. Copy `.env.example` to `.env` and configure SMTP. For Gmail, enable 2-Step Verification and create a Google App Password under Google Account security. Put the 16-character App Password in `SMTP_PASSWORD` without spaces. Do not use the normal Gmail password or the `your-app-password` placeholder.
 2. Run `npm install`.
 3. Run `npm start`.
-4. Open `http://localhost:3000`.
+4. Open `http://localhost:3000` for the public landing page, or `http://localhost:3000/login` for the app (sign-in, then the store or platform workspace).
 
 The server listens on `0.0.0.0`, so it is also reachable from another device using the host machine's IP address, for example `http://192.168.1.25:3000`. Allow Node.js through the Windows firewall when prompted.
 
-When SMTP is not configured, OTP, activation key and temporary password values are printed by the server for local development only. Never use that fallback in production. Emails are branded HTML with a plain-text version (`mail.js`): verification code, welcome (sign-in email, temporary password, activation key, next steps, plan) and password reset. Set `APP_URL` in `.env` to the address retailers use (for example `http://192.168.1.25:3000`) to include an "Open Ailexity Retail" button in them.
+When SMTP is not configured, temporary passwords are printed by the server for local development only. Sign-up itself never needs SMTP. Never use that fallback in production. Emails are branded HTML with a plain-text version (`mail.js`): welcome (sent after a store signs itself up), forgotten-password and superadmin password reset. Set `APP_URL` in `.env` to the address retailers use (for example `http://192.168.1.25:3000`) to include an "Open Ailexity Retail" button in them; it opens the sign-in page (`APP_URL` + `/login`).
+
+## Landing page and the Android package
+
+The public page is the site root: **`/`** is `index.html` (`/landing` and
+`/download` open the same page), styled by `landing.css` and driven by
+`landing.js`. The app — sign-in, sign-up and the store or platform workspace —
+is `login.html` at **`/login`**, with `styles.css` and `app.js`. The two share
+nothing, so editing the landing page cannot affect the app.
+
+The landing page deliberately has no way into the app: no sign-in or "get
+started" links and no sign-in directions. Its buttons download the Android app
+(the APK) or move around the page. People reach the sign-in page from the
+installed app, from the buttons in the account emails, or by opening `/login`.
+
+Two kinds of installed app still open the site root, and both are passed on to
+`/login` automatically (nothing on the page links there):
+
+- the **Android app 1.0.1** (`com.ailexity.app`), a WebView that opens
+  `https://ailexity.in`. The server recognises it by its user agent — it hides
+  the WebView markers but still names the device build (`Build/…`), which
+  Chrome itself no longer sends — and redirects it (`isOldAndroidApp` in
+  `server.js`). Rebuild the app to open `https://ailexity.in/login`, then
+  delete that redirect;
+- **home-screen web apps** added while the app lived at `/`: the landing page
+  sends anything running in standalone or fullscreen mode to `/login`. New
+  installs start there anyway (`start_url` in `manifest.webmanifest`).
+
+The page leads with RET.ai and keeps the scroll short: a hero as
+tall as the first screen, an at-a-glance bar, a "Meet RET.ai" panel whose
+callouts point at a real answer, four use-case cards, the twelve tools, a
+compact install panel with the three steps to a first bill, four questions,
+and an ecosystem / technical overview / call-to-action row above the footer.
+
+It is a light product page that fills the browser edge to edge under a white
+sticky nav; cards sit on a pale grey page with hairline borders. Type is Sora
+and Inter (Google Fonts), and the single accent colour is `--accent` in
+`landing.css`.
+
+The phones and the tablet are real screenshots of the app
+(`assets/landing/*.webp`, 390×844 at 2× from a demo store with made-up data —
+"Green Mart", fictional customers, no real store's records) framed and tilted
+in CSS 3D. Device scenes are sized in container units (`cqw`), so each render
+scales as one piece and the callout positions (percentages in `index.html`)
+stay true at every width; re-measure them if the RET.ai screenshot is
+replaced. Breakpoints: 1800px (six tools across), 1180px (the bottom row
+wraps), 960px (nav links move into the ⋮ menu, hero and RET.ai panel stack),
+640px (the use cases become a swipeable row).
+
+### Serving the package
+
+| Route | What it does |
+|---|---|
+| `GET /` (also `/landing`, `/download`) | The landing page |
+| `GET /login` | The app: sign-in, then the workspace |
+| `GET /api/apk` | Whether the package is published, plus its size, version and date |
+| `GET /download/ailexity-retail.apk` | The package, as a download |
+
+The newest `.apk` found in `downloads/`, then in `apk/`, is what that address
+serves — currently `apk/Ailexity-1.0.1.apk`. Drop a new build next to the old
+one and it takes over; the folders are scanned per request, so nothing needs
+restarting. The version comes from the file name (`Ailexity-1.0.1.apk` ->
+`1.0.1`) unless `apk.json` sets one; size and date come from the file. The
+current build declares `minSdkVersion` 24, so the page says Android 7.0 and
+newer (`minAndroid` in `downloads/apk.json`). Until a
+package exists the page does not offer a broken link: the button becomes *Ask
+for the APK* and says the package has not been published on this server yet.
+
+`downloads/README.md` covers the metadata file and building the package with
+Bubblewrap or PWABuilder. The package is a wrapper around the store address, so
+it needs the HTTPS deployment (Option B or C) to be installable as a Trusted
+Web Activity. Packages are git-ignored (`downloads/*.apk`, `apk/*.apk`) — ship
+them with the deployment, not the repo.
 
 ## Superadmin account
 
@@ -29,7 +101,7 @@ The app is a single Node.js process (`server.js`) that serves the frontend and t
 - Node.js **20.12 or newer** (22 LTS recommended) — the server uses `process.loadEnvFile`.
 - One machine that stays on while the store is open (a shop PC, a small server, or a cloud VM).
 - Outbound SMTP access for emails (Gmail App Password or any SMTP provider).
-- **HTTPS for anything beyond a private network.** Besides security, browsers only allow the *Copy* buttons (activation key, invoice text) on `https://` or `localhost` — over plain `http://` on a LAN they show "Copy failed" — and Android Chrome only installs the full-screen app over HTTPS (iPhone Safari's *Add to Home Screen* works on plain HTTP too).
+- **HTTPS for anything beyond a private network.** Besides security, browsers only allow the *Copy* buttons (invoice text) on `https://` or `localhost` — over plain `http://` on a LAN they show "Copy failed" — and Android Chrome only installs the full-screen app over HTTPS (iPhone Safari's *Add to Home Screen* works on plain HTTP too).
 
 ### Configuration (`.env`)
 
@@ -39,12 +111,12 @@ Copy `.env.example` to `.env` next to `server.js`. Values set in the real enviro
 |---|---|---|
 | `PORT`, `HOST` | Port and interface to listen on (`0.0.0.0` = all interfaces, `127.0.0.1` = only behind a reverse proxy) | `3000`, `0.0.0.0` |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Superadmin sign-in. **Change the password before going live** (or change it in the app under Settings → Security, which stores a hash in `data/settings.json` and overrides this value) | see above |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Outgoing mail for OTPs, welcome emails and password resets. Without them the secrets are printed to the server log — fine for development, never for production | — |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | Outgoing mail for welcome emails and password resets. Without them a forgotten password can only be reset by the superadmin; sign-up still works | — |
 | `SESSION_TTL_HOURS` | Fallback session length (Settings → Retailer defaults overrides it) | `12` |
-| `OTP_TTL_MINUTES` | How long a verification code stays valid | `10` |
-| `APP_URL` | Public address of the app, used for the "Open Ailexity Retail" button in emails | — |
+| `GEMINI_API_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `OLLAMA_URL` | **RET.ai**, the store's AI assistant. Set any of them — a free Gemini key from <https://aistudio.google.com/apikey>, a free Groq key from <https://console.groq.com/keys>, a free OpenRouter key from <https://openrouter.ai/keys>, or the address of an [Ollama](https://ollama.com) running on your own machine (`http://127.0.0.1:11434`, no key, nothing leaves the building). Every configured service is tried in turn until one answers; `AI_PROVIDERS` sets the order and `GEMINI_MODEL` / `GROQ_MODEL` / `OPENROUTER_MODEL` / `OLLAMA_MODEL` are comma-separated model lists, tried in order. Without any of them the AI page explains how to set one up | see `.env.example` |
+| `APP_URL` | Public address of the app, used for the "Open Ailexity Retail" button in emails and for invoice links. **Settings → Platform profile → Public app address** overrides it | — |
 
-Everything the app writes lives in `data/` (`store-users.json`, `items.json`, `bills.json`, `notes.json`, `settings.json`, `messages.json`, `feedback.json`). That folder holds password hashes and the settings, so keep it out of version control (it already is in `.gitignore`), restrict its permissions, and back it up — it *is* your database.
+Everything the app writes lives in `data/` (`store-users.json`, `items.json`, `bills.json`, `notes.json`, `ai-chats.json`, `settings.json`, `messages.json`, `feedback.json`). That folder holds password hashes and the settings, so keep it out of version control (it already is in `.gitignore`), restrict its permissions, and back it up — it *is* your database.
 
 ### Option A — a PC on the store's Wi‑Fi (no internet needed)
 
@@ -140,7 +212,7 @@ Put nginx/Caddy/Traefik with HTTPS in front of it exactly as in Option B. Run **
 ### After deploying — checklist
 
 1. Sign in as superadmin and change the password (**Settings → Security**); set the platform name, support contact, currency and WhatsApp country code (**Settings → Platform profile**).
-2. Send yourself a test retailer: add a store with your own email and confirm the verification and welcome emails arrive and look right.
+2. Open a test store yourself from **Create your store** with your own email, and confirm the welcome email arrives and looks right.
 3. Set `APP_URL` so the "Open" button in emails points at the real address.
 4. Back up `data/` (a nightly copy is enough — it is a few small files). Restoring is copying the files back and restarting.
 5. Add the app to the home screen on the store phones.
@@ -160,52 +232,130 @@ Copy the new files over (or `git pull`), run `npm ci --omit=dev` if `package.jso
 
 ### Limits to know before scaling
 
-The JSON files and in-memory sessions are designed for a small deployment (one server, a handful of stores, thousands of bills). There is no rate limiting on sign-in, and a restart clears sessions. Before opening the app to many stores or the public internet, move the data to a managed database and sessions to a persistent store, and add rate limiting at the proxy.
+The JSON files and in-memory sessions are designed for a small deployment (one server, a handful of stores, thousands of bills). Sign-up is open to anyone who can reach the server and is only throttled per IP in memory, sign-in is not rate limited at all, and a restart clears both sessions and the throttle. Put the app behind a network you control, or add a proxy-level rate limit, before exposing self-service sign-up to the public internet. Before opening the app to many stores or the public internet, move the data to a managed database and sessions to a persistent store, and add rate limiting at the proxy.
+
+## Invoices
+
+Every bill has a receipt built from one template, `invoice-template.js`, used in two places: the
+store's **View invoice** sheet (Orders → open an order → *View invoice*) and the public page a
+customer opens from the WhatsApp link. `invoice.css` styles it; changing either updates both.
+
+The receipt carries:
+
+- the registered name (and *trading as* line when they differ), business type, address, phone,
+  **GSTIN** and **FSSAI** licence;
+- a **TAX INVOICE** heading — or plain **INVOICE** when no GSTIN is set;
+- invoice number, date and time, payment mode, status, place of supply, who served, the customer,
+  and when the invoice was raised if that differs from the bill;
+- an itemised table with a serial number, HSN/SAC and GST rate per line, quantity with unit, rate,
+  **each line's share of the bill discount** and its taxable value;
+- gross amount, total discount, taxable value, the tax split, any round-off and the invoice total;
+- the **amount in words** (Indian lakh/crore format) and what the customer saved;
+- an **HSN/SAC-wise tax table** with a reconciling total row;
+- tender detail — tendered, received, balance due and change given;
+- item and quantity counts, the store's invoice note, terms & conditions, and a **Code 128 barcode
+  of the invoice number** (real encoding — it scans).
+
+A bill that is pending, cancelled or refunded is stamped as such at the top.
+
+Every figure on the slip reconciles. Each line's discount share is proportional to its value with
+the last line absorbing the rounding, the per-line tax follows from that, and the CGST/SGST totals
+are summed **from the HSN rows** rather than halving the bill's tax — so the summary block, the HSN
+table and its footer can never disagree by a paisa.
+
+**The tax split.** A store keeps one rate and one label. When that label mentions GST the receipt
+shows it collected half as CGST and half as SGST, which is how an intra-state Indian GST bill
+reads; any other label is shown as the single line the store configured. If you sell inter-state
+and need IGST, that is `taxComponents()` in `invoice-template.js`.
+
+### Business identity on the invoice
+
+**Profile → Billing & invoices** takes the details a tax invoice needs, all optional: registered /
+legal name, **GSTIN** (validated as 15 characters, `23ABCDE1234F1Z5`), place of supply, **FSSAI**
+licence (14 digits) and your own terms & conditions, one per line. A field left blank simply does
+not appear on the slip — no empty labels — and without a GSTIN the heading reads *INVOICE* rather
+than *TAX INVOICE*. Leave the terms blank to print the standard four.
+
+### The shared link
+
+| Route | What it does |
+|---|---|
+| `GET /invoice/<token>` | The customer-facing receipt page |
+| `GET /api/invoice/<token>` | The data behind it — no sign-in needed |
+| `POST /api/store/bills/<id>/share` | Mints a token for an older bill (the store's own bills only) |
+
+Each bill gets an unguessable `shareToken` when it is created, so the link can be built inside the
+tap that opens WhatsApp — no request in the way for a popup blocker to catch. Bills created before
+this existed get one from `/share` the first time they are opened. The public endpoint returns only
+what belongs on a receipt: **the customer's phone number is never included**, and nothing about the
+account is. A token for a suspended or archived store stops resolving.
+
+### The public address
+
+The link in a customer's WhatsApp message is built from the first of these that is set:
+
+1. **Settings → Platform profile → Public app address** (superadmin, no server access needed);
+2. the `APP_URL` environment variable;
+3. whatever address the app happens to be open on.
+
+The link is **always** included in the message. If it resolves to a private address — `localhost`,
+`192.168.x`, `10.x`, `172.16–31.x` or a `.local` name — a customer could not open it once they
+leave the shop, so the store gets a one-off warning telling it to set the public address. Set that
+address to the public HTTPS one (Option B or C) and customers can open their invoices anywhere.
 
 ## Install on a phone
 
-Open the app in the phone browser and use **Add to Home Screen** (Safari share menu on iPhone; Chrome menu on Android). It then opens full screen with its own icon: the status bar overlays the app, the header stays pinned, only the page content scrolls, and pinch/double-tap zoom is disabled. `manifest.webmanifest` and `icon-192.png` / `icon-512.png` provide the install metadata.
+Open the app (`/login`) in the phone browser and use **Add to Home Screen** (Safari share menu on iPhone; Chrome menu on Android). It then opens full screen with its own icon: every screen is light, so the status bar keeps its own light background with dark text, the header stays pinned, only the page content scrolls, and pinch/double-tap zoom is disabled. `manifest.webmanifest` and `icon-192.png` / `icon-512.png` provide the install metadata.
 
-## Sign in (one page for every role)
+## Accounts and sign-in
 
 Superadmins and store owners use the same sign-in form. The backend authenticates the credentials, verifies the role, and the app opens the matching workspace: the platform dashboard for a superadmin, the store dashboard for a retailer.
 
+### Opening a store (self-service)
+
+**Sign in → Create your store** takes a store name, the owner's name, an email, a mobile number and a password (8 characters or more). `POST /api/auth/register` creates the account with status `active` and returns a session token, so the owner lands on their dashboard immediately — there is no approval, no verification code, no activation key, no temporary password and no plan. A welcome email goes out afterwards if SMTP is configured; it is sent *after* the reply, so a slow or broken mail server never delays or blocks a sign-up.
+
+Guards on that endpoint: the email must be unused and must not be the superadmin address, the phone and email must be well-formed, the password must be at least 8 characters, and at most 5 accounts may be created per hour per IP address (in memory, cleared by a restart).
+
+### Forgotten passwords (self-service)
+
+**Forgot?** on the sign-in screen posts to `/api/auth/forgot`, which mails a temporary password to the address on the account and flags it so the app nags for a new one. The reply is the same whether or not the address exists, so the endpoint cannot be used to discover who has an account. This needs SMTP configured; without it the temporary password is only printed to the server log (development only). The superadmin can still reset a password from the retailer's detail page.
+
+### What the superadmin can and cannot do
+
+The console watches the platform: dashboards, the store list and details, broadcast messages and the inbox. It **cannot** approve, activate, gate or expire a store. The one control it keeps over access is suspend / archive, for shutting down an abusive or fraudulent account (archive also signs that store out everywhere). Both are reversible from the same screen.
+
 ## Superadmin workflow
 
-- **Dashboard**: user activity, retailer statistics (total / pending / suspended / archived), order statistics, revenue statistics, alerts and notifications, recent registrations, recent activity.
-- **Retailers**: filter by All / Pending / Active / Suspended / Archived. Adding a retailer walks through Store information, Owner information, Contact information, Business information and Subscription plan, then:
-  1. Create account: the backend sends a time-limited six-digit OTP to the retailer by SMTP.
-  2. Verify: the superadmin enters the OTP and the backend generates a one-time **activation key** and a **temporary password**, emails both in the welcome message, and shows them to the superadmin (with a copy button) in case email is not configured.
-  3. Ready: the retailer can now sign in.
+- **Dashboard**: user activity, retailer statistics (total / active / suspended / closed), order statistics, revenue statistics, alerts and notifications, recent sign-ups, recent activity.
+- **Retailers**: filter by All / Active / Suspended / Archived. Stores appear here as soon as they sign themselves up; there is no add-a-retailer wizard.
 - **Messages to stores** (top of the Retailers page, saved in `data/messages.json`): write a title and message, pick a type (Information / Important / Urgent), how long it stays visible (1 day to 30 days or a custom number of days, up to 90) and the recipients (all stores or a picked list of active stores). Stores see it as a popup on their dashboard; the sent list shows each message with its status (active / ended / expired) and how many recipients have read it, and a message can be ended early or deleted.
-- **Automatic plan-expiry reminders**: every hour the server checks every active store; when a plan ends within 5 days the store gets one reminder per day — a popup message on its dashboard (Important, or Urgent within 2 days; it replaces the previous day's) and an email — until the superadmin extends the plan (the open reminder is withdrawn at once) or the plan ends. These appear in the sent-messages list marked *Automatic*. `POST /api/admin/plan-reminders/run` runs the check on demand.
-- Retailer details let the superadmin edit the store profile, change the plan, suspend, archive (soft delete, signs the retailer out everywhere) and restore an account. Archived retailers can be deleted permanently.
+- Retailer details let the superadmin edit the store profile, suspend, archive (soft delete, signs the retailer out everywhere) and restore an account. Archived retailers can be deleted permanently. There is no plan to change.
 - **Inbox** (own tab, with a new-message count; saved in `data/feedback.json`): every message stores send from their Profile page, with the store, owner, category (feedback / problem / request / other), subject and text. Filter Open / New / Seen / Resolved / All; mark a message seen, resolve it, reopen or delete it. The dashboard alerts list links to new messages. This is one-way — there are no replies in the app; answer the store by phone, email or a message to stores.
 - **Settings** (saved in `data/settings.json`):
-  - *Platform profile*: platform name, support email and phone (shown to retailers under Subscription), currency (ISO code, formats every amount for everyone) and the WhatsApp country code added to 10-digit mobile numbers.
-  - *Retailer defaults*: default plan pre-selected when adding a retailer, how many days before expiry a plan counts as "expiring soon", and session length for new sign-ins.
+  - *Platform profile*: platform name, support email and phone (shown to retailers under Help & support), currency (ISO code, formats every amount for everyone) and the WhatsApp country code added to 10-digit mobile numbers.
+  - *Retailer defaults*: session length for new sign-ins.
   - *Alerts & notifications*: which alert types appear on the dashboard.
   - *Security*: change the superadmin password (other superadmin sessions are signed out).
 
 ## Retailer workflow
 
-1. On first login the retailer enters their email and the temporary password; the form then asks for the activation key from the welcome email. The backend checks both, consumes the key and activates the account; the app then asks the retailer to set their own password under Profile → Security. Later logins need only email and password.
+1. The owner creates the store themselves from **Sign in → Create your store** and is signed in immediately; later sign-ins need only that email and password. Nothing has to be activated and nothing expires.
 2. **Dashboard**: messages from the superadmin pop up here (Got it marks them read, Later keeps them quiet until the next sign-in); active ones stay listed in a Messages card with an unread dot on the Dashboard tab, and the app checks for new messages every minute. Then sales today, orders today, total items, monthly sale, average order value, pending payments; sales analytics by day / week / month; order analytics (completed / pending / cancelled); inventory (available / low / out of stock).
 3. **Notes** (notepad button in the header, on every store page; the badge counts reminders due today or overdue): a private notebook for the store, saved in `data/notes.json` and never shown to the superadmin. **+ Note** opens an editor like a phone's notes app: just write, with bold / italic / underline / strikethrough, bullet lists and tickable checklists; the note saves itself as you type (also when switching tabs or leaving the app), the first line is its title, tap a note in the list to open and edit it, and an emptied note is deleted. **Reminder** opens the same editor with a date and time row (the bell button adds or removes one on any note); the note then sits under *Reminders* until it is ticked, pops up on any store page when its time comes while the app is open (*Mark done* / *Later*), and is flagged *Overdue* afterwards. Checklist items show as checkboxes in the lists too, and can be ticked there. The bottom of the **Dashboard** has a *Notes & reminders* card with the next three reminders and the three latest notes (tickable as well) and a *See all* button. Content is stored as HTML reduced to that formatting only; dates and times are the phone's local time.
-4. **Items**: catalog with categories, a per-item low-stock alert level (default 5) and All / Low stock / Out of stock filters. Item lifecycle: created → available → stock updated → used in an order → stock reduced → low stock → out of stock.
-5. **Billing**: pick items into the cart, add an optional discount (amount) and tax rate (%, pre-filled from Profile → Billing & invoices), optionally capture the customer name and WhatsApp number, then choose Cash / Card / UPI or *Pay later*. Paid bills confirm payment and generate an invoice (`INV-0001`, …) immediately; pay-later bills are saved as pending orders and get their invoice when marked paid.
-6. **WhatsApp invoice**: order completed → invoice generated → customer mobile number (captured at billing or typed in later on the order) → **Send invoice on WhatsApp** opens a text invoice in WhatsApp → the order is marked *WhatsApp sent*. **Copy invoice** copies the same text.
-7. **Orders**: filter by All / Today / Pending / Completed / Cancelled / Refunded. Each order expands to its detail: date & time, customer, items, subtotal, discount, tax, total, payment method, payment status, invoice, WhatsApp status and the order timeline (order created → bill generated → payment confirmed → invoice generated → WhatsApp sent). Pending orders can be marked paid or cancelled; completed orders can be refunded. Cancelling or refunding returns the items to stock and removes the sale from revenue.
+4. **RET.ai** (Ailexity's retail AI — the button with its two-hands mark in the header, next to Notes; the mark is `assets/ret-mark.svg`, a vector traced from the supplied artwork and painted in the surrounding text colour, so it also sits beside every answer and on the welcome card): chat with an AI about the store's daily sales, revenue, orders, products, stock, unpaid bills and customers. For every question the server builds a fresh snapshot of the store's numbers (today / yesterday / this and last week / this and last month / last 30 days / all time, a day-by-day table for 60 days, 12 months of totals, busiest weekdays and hours, payment-method split, best and slow sellers, the full catalog with stock levels, unpaid bills, top customers and the latest orders — `ai.js`) and sends it with the conversation to the first configured AI service that answers (Gemini, Groq, OpenRouter or a local Ollama — see **Configuration**). A model that is overloaded or rate-limited is skipped for a minute and the next model or service is tried, so a "high demand" spike at one provider does not stop the assistant. Every answer is shown as RET.ai; the server records which model actually wrote it (`via` on the message in `data/ai-chats.json`) for troubleshooting. A new chat greets the owner with sample questions to tap; every chat is saved in `data/ai-chats.json` (private to the store) and listed under **Chat history** on the same page, where it can be reopened, continued or deleted. Limits: 60 questions per store per hour, 100 chats per store, 200 messages per chat. Store data is sent to the AI service that answers the question — unless that service is an Ollama on your own machine.
+5. **Items**: catalog with categories, a per-item low-stock alert level (default 5) and All / Low stock / Out of stock filters. Item lifecycle: created → available → stock updated → used in an order → stock reduced → low stock → out of stock.
+6. **Billing**: pick items into the cart, add an optional discount (amount) and tax rate (%, pre-filled from Profile → Billing & invoices), optionally capture the customer name and WhatsApp number, then choose Cash / Card / UPI or *Pay later*. Paid bills confirm payment and generate an invoice (`INV-0001`, …) immediately; pay-later bills are saved as pending orders and get their invoice when marked paid.
+7. **WhatsApp invoice**: order completed → invoice generated → customer mobile number (captured at billing or typed in later on the order) → **Send invoice on WhatsApp** opens the message in WhatsApp → the order is marked *WhatsApp sent*. The message is deliberately short: the store, the invoice number and date, **the amount, how it was paid and how many items**, and a link to the full receipt (see **Invoices**). The itemised bill, the tax split and every other particular are on the invoice the link opens, so nothing is repeated in the chat — the message stays the same nine lines whether the basket held one item or fifty. An unpaid bill is headed as a bill rather than an invoice and reads *Amount due*; a cancelled or refunded one is flagged as such. **Copy invoice** copies the same text; **View invoice** opens the receipt in the app.
+8. **Orders**: filter by All / Today / Pending / Completed / Cancelled / Refunded. Each order expands to its detail: date & time, customer, items, subtotal, discount, tax, total, payment method, payment status, invoice, WhatsApp status and the order timeline (order created → bill generated → payment confirmed → invoice generated → WhatsApp sent). Pending orders can be marked paid or cancelled; completed orders can be refunded. Cancelling or refunding returns the items to stock and removes the sale from revenue.
    - **Performance report** (top of the Orders page): pick Today / Yesterday / This week / Last 7 days / This month / Last month or custom From–To dates (up to a year) and see sales, orders, average order value, items sold, pending payments, cancelled/refunded counts, best day, payment-method split and top items for that period. **Download PDF report** produces an A4 PDF with those figures plus a day-by-day table; tick *Include every order* to append the full order history for the period. PDFs are generated on the server without external libraries (`pdf.js`, `report.js`); amounts use the platform currency (`Rs.` for INR).
-8. **Profile & settings** (saved on the retailer record):
+9. **Profile & settings** (saved on the retailer record):
    - *Store profile*: store name, owner name, phone, business type and address (the sign-in email stays with the superadmin).
    - *Billing & invoices*: default tax rate and label (e.g. GST) pre-filled on every bill, an invoice note, and whether the store phone and address appear on invoices.
    - *Inventory*: default low-stock alert level for new items and whether stock warnings pop up.
-   - *Subscription*: plan, expiry and the platform support contact.
-   - *Security*: change password (other devices are signed out). After a superadmin password reset the retailer is prompted to set a new one.
+   - *Help & support*: when the store was opened and how to reach the platform.
+   - *Security*: change password (other devices are signed out). After a **Forgot?** request or a superadmin reset the retailer is prompted to set a new one.
    - *Message Ailexity Retail*: send feedback, a problem or a request to the superadmin (category, subject, message; up to 20 a day). The history underneath shows every message sent with its status: Sent → Seen by the platform → Resolved. Not a chat — the superadmin replies outside the app.
    - Sign out.
-
-The activation API `POST /api/auth/activate` remains available for non-UI onboarding clients.
 
 See **Deployment → Limits to know before scaling** for what to change before running this for many stores.

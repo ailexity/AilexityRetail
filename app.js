@@ -6,17 +6,16 @@ const passwordToggle = document.querySelector("#passwordToggle");
 const formMessage = document.querySelector("#formMessage");
 const emailError = document.querySelector("#emailError");
 const passwordError = document.querySelector("#passwordError");
-const activationField = document.querySelector("#activationField");
-const activationKeyInput = document.querySelector("#activationKey");
-const activationError = document.querySelector("#activationError");
+const signupCard = document.querySelector("#signupCard");
+const signupForm = document.querySelector("#signupForm");
+const signupMessage = document.querySelector("#signupMessage");
 const adminShell = document.querySelector("#adminShell");
 const userShell = document.querySelector("#userShell");
-const loginCard = document.querySelector(".admin-login");
-const welcomeScreen = document.querySelector(".welcome-screen");
+const loginCard = document.querySelector("#loginCard");
+const authScreen = document.querySelector("#authScreen"); // sign in + create your store
 const landingScreen = document.querySelector("#landingScreen");
 const API_BASE = window.location.protocol === "file:" ? "http://localhost:3000" : "";
 let authToken = localStorage.getItem("ailexityAuthToken") || sessionStorage.getItem("ailexityAuthToken");
-let pendingStoreId = null;
 let selectedUserId = null;
 
 // ---- Small shared helpers ----
@@ -52,16 +51,20 @@ const setMessage = (message, type = "") => {
 const ROLE_LABELS = { admin: "Superadmin", store: "Store owner" };
 
 // Role verification happened on the server; open the workspace that matches the verified role.
-function openWorkspace(result) {
+// `welcome` ("login" or "signup") puts the welcome page over it: only right after the form, never when a saved session reopens the app.
+function openWorkspace(result, { welcome = null } = {}) {
   landingScreen.hidden = true;
-  welcomeScreen.hidden = true;
+  authScreen.hidden = true;
   loginCard.hidden = true;
+  signupCard.hidden = true;
+  document.documentElement.classList.remove("restoring");
   document.body.classList.add("app-active"); document.body.classList.remove("signin-active"); setThemeColor("#ffffff");
   applyPlatform(result.platform);
+  if (welcome) showWelcome(result, welcome);
   if (result.role === "store") {
     userShell.hidden = false; activateStoreTab("home");
     storeState.profile = result; applyStoreProfile();
-    if (result.passwordResetRequired) showToast("You're signed in with a temporary password — set your own under Profile → Security");
+    if (result.passwordResetRequired) afterWelcome(() => showToast("You're signed in with a temporary password — set your own under Profile → Security"));
     startStore();
   } else {
     adminShell.hidden = false; activateAdminTab("dashboard");
@@ -79,20 +82,11 @@ function applyStoreProfile() {
   document.querySelector("#userGreeting").innerHTML = `<strong>${greetingFor(new Date())}</strong>${profile.storeName ? `<span>${escapeHtml(profile.storeName)}</span>` : ""}`;
   fillStoreSettings();
 }
-const PLAN_NAMES = { 30: "Starter", 90: "Standard", 365: "Annual" };
-const planName = (days) => Number(days) ? `${PLAN_NAMES[Number(days)] || `${days}-day`} plan` : "Lifetime plan";
-function planLabel(profile) {
-  const name = planName(profile.activationDurationDays);
-  if (!profile.accountExpiresAt) return `${name} · no expiry`;
-  const daysLeft = Math.ceil((Date.parse(profile.accountExpiresAt) - Date.now()) / 86400000);
-  return `${name} · ${daysLeft > 0 ? `${plural(daysLeft, "day")} left` : "expired"} · expires ${new Date(profile.accountExpiresAt).toLocaleDateString()}`;
-}
 
 const validate = () => {
   let valid = true;
   emailError.textContent = "";
   passwordError.textContent = "";
-  activationError.textContent = "";
   emailInput.closest(".field-group").classList.remove("valid");
 
   if (!emailInput.value.trim()) {
@@ -107,11 +101,6 @@ const validate = () => {
 
   if (!passwordInput.value) {
     passwordError.textContent = "Enter your password to continue.";
-    valid = false;
-  }
-
-  if (!activationField.hidden && !activationKeyInput.value.trim()) {
-    activationError.textContent = "Paste the activation key from your welcome email.";
     valid = false;
   }
 
@@ -137,41 +126,40 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   setMessage("");
   if (!validate()) return;
-  const submitButton = document.querySelector(".submit-button");
+  const submitButton = form.querySelector(".submit-button");
   submitButton.disabled = true;
   submitButton.querySelector("span").textContent = "Authenticating…";
   try {
-    const response = await fetch(`${API_BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: emailInput.value, password: passwordInput.value, activationKey: activationKeyInput.value.trim() }) });
+    const response = await fetch(`${API_BASE}/api/auth/login`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: emailInput.value, password: passwordInput.value }) });
     const result = await response.json();
-    if (!response.ok) {
-      if (result.requiresActivationKey) {
-        activationField.hidden = false; passwordInput.placeholder = "Temporary password from your welcome email";
-        (passwordInput.value ? activationKeyInput : passwordInput).focus();
-      }
-      throw new Error(result.error || "Unable to sign in");
-    }
+    if (!response.ok) throw new Error(result.error || "Unable to sign in");
     authToken = result.token;
     (rememberInput.checked ? localStorage : sessionStorage).setItem("ailexityAuthToken", authToken);
     const role = ROLE_LABELS[result.role] || "User";
-    setMessage(`${result.firstLogin ? "Account activated. " : ""}Verified as ${role}. Opening ${result.role === "admin" ? "the platform" : "your store"} dashboard…`, "success");
+    setMessage(`Verified as ${role}. Opening ${result.role === "admin" ? "the platform" : "your store"} dashboard…`, "success");
     submitButton.querySelector("span").textContent = `${role} verified ✓`;
-    setTimeout(() => openWorkspace(result), 650);
+    setTimeout(() => openWorkspace(result, { welcome: "login" }), 650);
   } catch (error) { setMessage(error.message, "error"); submitButton.disabled = false; submitButton.querySelector("span").textContent = "Sign in"; }
 });
 
-document.querySelector("#forgotButton").addEventListener("click", () => {
-  setMessage("Store owners: ask the superadmin to reset your password. Superadmins: update it in the server configuration.", "success");
-});
-
-document.querySelector("#supportButton").addEventListener("click", () => {
-  setMessage("Ask your workspace owner to add or restore your access.", "success");
+// Forgotten password: the store mails itself a temporary one. No superadmin in the loop.
+document.querySelector("#forgotButton").addEventListener("click", async () => {
+  const email = emailInput.value.trim();
+  if (!email || !emailInput.validity.valid) { emailError.textContent = "Enter your email first, then tap Forgot?"; emailInput.focus(); return; }
+  setMessage("Sending a temporary password…");
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/forgot`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Could not send it");
+    setMessage(result.message, "success");
+  } catch (error) { setMessage(error.message, "error"); }
 });
 
 function resetLoginForm() {
-  form.reset();
-  activationField.hidden = true; passwordInput.placeholder = "Enter your password";
+  form.reset(); signupForm.reset();
+  passwordInput.placeholder = "Enter your password";
   emailInput.closest(".field-group").classList.remove("valid");
-  const submitButton = document.querySelector(".submit-button");
+  const submitButton = form.querySelector(".submit-button");
   submitButton.disabled = false;
   submitButton.querySelector("span").textContent = "Sign in";
   setMessage("");
@@ -245,7 +233,7 @@ const EVENT_META = {
   updated: { label: "Updated", icon: "✎", className: "neutral-icon" },
   password_reset: { label: "Password reset", icon: "↻", className: "alert-icon" },
 };
-const USER_STATUS_LABELS = { active: "Active", suspended: "Suspended", verified: "Awaiting activation", pending_verification: "Pending OTP", archived: "Archived" };
+const USER_STATUS_LABELS = { active: "Active", suspended: "Suspended", archived: "Closed" };
 const userStatusBadge = (status) => `<span class="badge badge-${escapeHtml(status)}">${USER_STATUS_LABELS[status] || status}</span>`;
 
 function tickClock() {
@@ -281,14 +269,13 @@ function renderDashboardStats() {
 
   const { users, sessions, orders = {}, revenue = {}, inventory = {}, recentRegistrations = [] } = data;
   document.querySelector("#activeAccounts").textContent = users.active;
-  const accountNotes = [users.pending && `${users.pending} pending OTP`, users.verified && `${users.verified} awaiting activation`, users.suspended && `${users.suspended} suspended`].filter(Boolean);
+  const accountNotes = [users.suspended && `${users.suspended} suspended`, users.archived && `${users.archived} closed`].filter(Boolean);
   document.querySelector("#activeAccountsNote").textContent = accountNotes.length ? accountNotes.join(" · ") : `of ${plural(users.total, "retailer")}`;
   document.querySelector("#signedInNow").textContent = sessions.store;
-  const soonDays = data.expiringSoonDays || 7;
-  document.querySelector("#signedInNote").textContent = users.expiringSoon ? `${users.expiringSoon} expiring within ${plural(soonDays, "day")}` : users.expired ? `${plural(users.expired, "plan")} expired` : `of ${plural(users.active, "active retailer")}`;
+  document.querySelector("#signedInNote").textContent = `of ${plural(users.active, "active retailer")}`;
 
-  // Retailer statistics: "pending" covers both onboarding stages (waiting for OTP, then for first login).
-  setText("#statRetailersTotal", users.total); setText("#statRetailersPending", users.pending + users.verified);
+  // Retailer statistics. Stores sign themselves up, so there is no waiting state to count.
+  setText("#statRetailersTotal", users.total); setText("#statRetailersActive", users.active);
   setText("#statRetailersSuspended", users.suspended); setText("#statRetailersArchived", users.archived || 0);
   // Order & revenue statistics across every store.
   setText("#statOrdersToday", orders.today ?? 0); setText("#statOrdersMonth", orders.month ?? 0); setText("#statOrdersPending", orders.pending ?? 0); setText("#statOrdersCancelled", orders.cancelled ?? 0);
@@ -297,10 +284,6 @@ function renderDashboardStats() {
   // Alerts: anything that needs the superadmin's attention, each linking to the relevant retailer filter. Settings → Alerts chooses which types show.
   const enabled = adminSettings.data?.alerts || {}; const on = (key) => enabled[key] !== false;
   const alerts = [
-    on("pendingVerification") && users.pending && { level: "warn", filter: "pending", text: `${plural(users.pending, "retailer")} waiting for OTP verification` },
-    on("awaitingActivation") && users.verified && { level: "warn", filter: "pending", text: `${plural(users.verified, "retailer")} verified but not yet signed in` },
-    on("expiringSoon") && users.expiringSoon && { level: "warn", filter: "active", text: `${plural(users.expiringSoon, "plan")} expiring within ${plural(soonDays, "day")}` },
-    on("expired") && users.expired && { level: "danger", filter: "all", text: `${plural(users.expired, "plan")} expired · renew or archive` },
     on("suspended") && users.suspended && { level: "danger", filter: "suspended", text: `${plural(users.suspended, "account")} suspended` },
     on("pendingPayments") && orders.pending && { level: "info", text: `${plural(orders.pending, "order")} awaiting payment · ${formatMoney(revenue.pending)}` },
     on("outOfStock") && inventory.outOfStock && { level: "danger", text: `${plural(inventory.outOfStock, "item")} out of stock across stores` },
@@ -358,10 +341,11 @@ function fillAdminSettings() {
   const s = adminSettings.data; if (!s) return;
   document.querySelector("#platformName").value = s.platformName; document.querySelector("#supportEmail").value = s.supportEmail || ""; document.querySelector("#supportPhone").value = s.supportPhone || "";
   document.querySelector("#platformCurrency").value = s.currency; document.querySelector("#whatsappCode").value = s.whatsappCountryCode;
-  document.querySelector("#defaultPlan").value = String(s.defaultPlanDays); document.querySelector("#expiringSoonDays").value = s.expiringSoonDays; document.querySelector("#sessionHours").value = s.sessionHours;
+  document.querySelector("#platformAppUrl").value = s.appUrl || "";
+  document.querySelector("#sessionHours").value = s.sessionHours;
   const boxes = [...document.querySelectorAll("#alertsForm [data-alert]")]; boxes.forEach((box) => { box.checked = s.alerts[box.dataset.alert] !== false; });
   setText("#platformProfileSummary", [s.platformName, s.currency, s.supportEmail || s.supportPhone].filter(Boolean).join(" · "));
-  setText("#retailerDefaultsSummary", `${planName(s.defaultPlanDays)} by default · warn ${plural(s.expiringSoonDays, "day")} before expiry · ${plural(s.sessionHours, "hour")} sessions`);
+  setText("#retailerDefaultsSummary", `${plural(s.sessionHours, "hour")} sessions`);
   const onCount = boxes.filter((box) => box.checked).length;
   setText("#alertsSummary", onCount === boxes.length ? "All alert types shown on the dashboard" : onCount ? `${onCount} of ${boxes.length} alert types shown on the dashboard` : "All alerts turned off");
   setText("#adminSecuritySummary", s.adminPasswordChangedAt ? `Password changed ${relativeTime(s.adminPasswordChangedAt)}` : "Using the password from the server configuration");
@@ -380,11 +364,11 @@ async function saveAdminSettings(form, payload, successText) {
 }
 document.querySelector("#platformProfileForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveAdminSettings(event.target, { platformName: document.querySelector("#platformName").value, supportEmail: document.querySelector("#supportEmail").value, supportPhone: document.querySelector("#supportPhone").value, currency: document.querySelector("#platformCurrency").value, whatsappCountryCode: document.querySelector("#whatsappCode").value }, "Platform profile saved");
+  saveAdminSettings(event.target, { platformName: document.querySelector("#platformName").value, supportEmail: document.querySelector("#supportEmail").value, supportPhone: document.querySelector("#supportPhone").value, currency: document.querySelector("#platformCurrency").value, whatsappCountryCode: document.querySelector("#whatsappCode").value, appUrl: document.querySelector("#platformAppUrl").value }, "Platform profile saved");
 });
 document.querySelector("#retailerDefaultsForm").addEventListener("submit", (event) => {
   event.preventDefault();
-  saveAdminSettings(event.target, { defaultPlanDays: document.querySelector("#defaultPlan").value, expiringSoonDays: document.querySelector("#expiringSoonDays").value, sessionHours: document.querySelector("#sessionHours").value }, "Retailer defaults saved");
+  saveAdminSettings(event.target, { sessionHours: document.querySelector("#sessionHours").value }, "Retailer defaults saved");
 });
 document.querySelector("#alertsForm").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -956,50 +940,287 @@ function renderLastBill() {
 }
 document.querySelector("#lastBillWhatsApp").addEventListener("click", () => { const bill = findBill(storeState.lastBillId); if (bill) sendInvoiceOnWhatsApp(bill); });
 
-// WhatsApp invoice: a plain-text invoice opened in WhatsApp (to the customer's number when one was captured).
-function invoiceText(bill) {
-  const profile = storeState.profile || {}; const settings = profile.settings || {};
-  const store = profile.storeName || profile.name || "Our store";
-  const at = new Date(bill.createdAt);
-  return [
-    `*${store}*`,
-    settings.showContactOnInvoice !== false && profile.address ? profile.address : null,
-    settings.showContactOnInvoice !== false && profile.phone ? `Phone: ${profile.phone}` : null,
-    `${invoiceLabel(bill)} · ${formatShortDate(at)} ${formatClock(at)}`,
-    bill.customerName ? `Customer: ${bill.customerName}` : null, "",
-    ...bill.lines.map((line) => `${line.quantity} × ${line.name} — ${formatMoney(line.total)}`), "",
-    `Subtotal: ${formatMoney(bill.subtotal)}`,
-    bill.discount ? `Discount: −${formatMoney(bill.discount)}` : null,
-    bill.tax ? `${bill.taxLabel || "Tax"} (${bill.taxRate}%): ${formatMoney(bill.tax)}` : null,
-    `*Total: ${formatMoney(bill.total)}*`, `Payment: ${PAYMENT_LABELS[bill.paymentMethod] || bill.paymentMethod} · ${PAYMENT_STATUS_LABELS[bill.status] || bill.status}`,
-    settings.invoiceNote ? "" : null, settings.invoiceNote || null,
-  ].filter((line) => line !== null).join("\n");
+// ---- RET.ai, the store's AI assistant (header button → AI page): chat about sales, revenue, stock and customers ----
+// The server builds a fresh snapshot of the store's numbers for every question, so answers always reflect the latest bills.
+// Every conversation is kept (data/ai-chats.json) and listed under "Chat history" on the same page.
+const AI_SAMPLE_QUESTIONS = [
+  "How were my sales today compared to yesterday?",
+  "Give me a summary of this week's revenue",
+  "Which products are selling the most this month?",
+  "Which items are low on stock and need reordering?",
+  "What are my busiest days and hours?",
+  "How much money is still unpaid by customers?",
+  "Compare this month with last month",
+  "Suggest 3 ways to increase my sales",
+];
+const aiState = { chats: [], current: null, loaded: false, enabled: true, pending: null, historyOpen: false };
+const aiThread = document.querySelector("#aiThread"); const aiInput = document.querySelector("#aiInput");
+
+// Answers come back as simple Markdown: headings, bullet / numbered lists, **bold**, *italic*, `code`. Escaped first, so nothing else gets through.
+function aiMarkdown(text) {
+  const inline = (line) => escapeHtml(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*?)\*(?!\*)/g, "$1<em>$2</em>").replace(/`([^`]+)`/g, "<code>$1</code>");
+  const html = []; let list = null; let paragraph = [];
+  const flush = () => { if (paragraph.length) { html.push(`<p>${paragraph.join("<br />")}</p>`); paragraph = []; } if (list) { html.push(`</${list}>`); list = null; } };
+  for (const raw of String(text).replace(/\r/g, "").split("\n")) {
+    const line = raw.trim(); let match;
+    if (!line) { flush(); continue; }
+    if ((match = line.match(/^#{1,6}\s+(.*)$/))) { flush(); html.push(`<h4>${inline(match[1])}</h4>`); continue; }
+    if ((match = line.match(/^(?:[-*•])\s+(.*)$/)) || (match = line.match(/^\d+[.)]\s+(.*)$/))) {
+      const type = /^\d/.test(line) ? "ol" : "ul";
+      if (paragraph.length) { html.push(`<p>${paragraph.join("<br />")}</p>`); paragraph = []; }
+      if (list !== type) { if (list) html.push(`</${list}>`); html.push(`<${type}>`); list = type; }
+      html.push(`<li>${inline(match[1])}</li>`); continue;
+    }
+    if (list) { html.push(`</${list}>`); list = null; }
+    paragraph.push(inline(line));
+  }
+  flush(); return html.join("");
 }
+const aiScroller = () => document.querySelector("#userShell .user-pages");
+const aiScrollToEnd = () => requestAnimationFrame(() => { const scroller = aiScroller(); scroller.scrollTop = scroller.scrollHeight; });
+const aiMessageHtml = (message) => message.role === "user"
+  ? `<div class="ai-message ai-user"><div class="ai-bubble">${escapeHtml(message.text).replace(/\n/g, "<br />")}</div></div>`
+  : `<div class="ai-message ai-bot"><span class="ai-avatar" aria-hidden="true"><i class="ret-mark"></i></span><div class="ai-bubble">${aiMarkdown(message.text)}<small>${formatClock(new Date(message.at))} · RET.ai</small></div></div>`;
+const aiChatRowHtml = (chat) => `<div class="ai-chat-row${aiState.current?.id === chat.id ? " current" : ""}" data-chat-id="${escapeHtml(chat.id)}"><button type="button" class="ai-chat-open"><strong>${escapeHtml(chat.title)}</strong><small>${relativeTime(chat.updatedAt)} · ${plural(Math.ceil(chat.messageCount / 2), "question")}${chat.preview ? ` · ${escapeHtml(chat.preview)}` : ""}</small></button><button type="button" class="ai-chat-delete" aria-label="Delete chat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M9.5 7V4.5h5V7" /><path d="M7 7l.8 12.5h8.4L17 7" /></svg></button></div>`;
+
+function renderAiHistory() {
+  const panel = document.querySelector("#aiHistory"); const toggle = document.querySelector("#aiHistoryToggle"); const { chats } = aiState;
+  document.querySelector("#aiHistoryLabel").textContent = chats.length ? `Chat history (${chats.length})` : "Chat history";
+  panel.hidden = !aiState.historyOpen; toggle.setAttribute("aria-expanded", String(aiState.historyOpen)); toggle.classList.toggle("open", aiState.historyOpen);
+  panel.innerHTML = chats.length ? chats.map(aiChatRowHtml).join("") : '<div class="empty-list">No chats yet — ask a question below to start one.</div>';
+}
+function renderAiThread() {
+  const { current, pending } = aiState;
+  const messages = [...(current?.messages || [])];
+  const waiting = pending && pending.chatId === (current?.id || null);
+  if (waiting) messages.push({ role: "user", text: pending.question });
+  document.querySelector("#aiSetup").hidden = aiState.enabled;
+  if (!messages.length) {
+    // New chat: a greeting, sample questions to tap, and the latest few chats to pick up again.
+    const name = storeState.profile?.name?.split(" ")[0];
+    aiThread.innerHTML = `<div class="ai-welcome"><span class="ai-welcome-icon" aria-hidden="true"><i class="ret-mark"></i></span><strong>${greetingFor(new Date())}${name ? `, ${escapeHtml(name)}` : ""}!</strong><p>I'm RET.ai, Ailexity's retail AI. I know your store's sales, orders, stock and customers — ask me anything about how the business is doing.</p></div>`
+      + `<p class="section-label">Try asking</p><div class="ai-samples">${AI_SAMPLE_QUESTIONS.map((question) => `<button type="button" class="ai-sample" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join("")}</div>`
+      + (aiState.chats.length && !aiState.historyOpen ? `<div class="section-row ai-recent-head"><p class="section-label">Recent chats</p>${aiState.chats.length > 3 ? '<button type="button" class="ai-see-all" id="aiSeeAll">See all</button>' : ""}</div><article class="item-list ai-recent">${aiState.chats.slice(0, 3).map(aiChatRowHtml).join("")}</article>` : "");
+    return;
+  }
+  aiThread.innerHTML = messages.map(aiMessageHtml).join("") + (waiting ? '<div class="ai-message ai-bot"><span class="ai-avatar" aria-hidden="true"><i class="ret-mark"></i></span><div class="ai-bubble ai-typing" aria-label="RET.ai is thinking"><i></i><i></i><i></i></div></div>' : "");
+}
+function renderAi() { renderAiHistory(); renderAiThread(); document.querySelector("#aiSend").disabled = Boolean(aiState.pending); }
+
+async function loadAiChats() {
+  try { const result = await apiRequest("/api/store/ai/chats"); aiState.chats = result.chats; aiState.enabled = result.enabled; aiState.loaded = true; }
+  catch (error) { showToast(error.message); }
+  renderAi();
+}
+async function openAiChat(id) {
+  aiState.historyOpen = false;
+  try { aiState.current = (await apiRequest(`/api/store/ai/chats/${encodeURIComponent(id)}`)).chat; }
+  catch (error) { showToast(error.message); return loadAiChats(); }
+  renderAi(); aiScrollToEnd();
+}
+function newAiChat() { aiState.current = null; aiState.historyOpen = false; renderAi(); aiScroller().scrollTop = 0; aiInput.focus(); }
+async function deleteAiChat(id) {
+  const chat = aiState.chats.find((entry) => entry.id === id); if (!chat || !confirm(`Delete the chat "${chat.title}"?`)) return;
+  try {
+    await apiRequest(`/api/store/ai/chats/${encodeURIComponent(id)}`, { method: "DELETE" });
+    aiState.chats = aiState.chats.filter((entry) => entry.id !== id); if (aiState.current?.id === id) aiState.current = null;
+    renderAi(); showToast("Chat deleted");
+  } catch (error) { showToast(error.message); }
+}
+async function askAiQuestion(question) {
+  question = question.trim(); if (!question || aiState.pending) return;
+  const chatId = aiState.current?.id || null;
+  aiState.pending = { chatId, question }; aiInput.value = ""; resizeAiInput(); renderAi(); aiScrollToEnd();
+  try {
+    const { chat } = await apiRequest("/api/store/ai/chats", { method: "POST", body: JSON.stringify({ message: question, chatId, tz: new Date().getTimezoneOffset() }) });
+    const stillHere = (aiState.current?.id || null) === chatId; aiState.pending = null;
+    if (stillHere) aiState.current = chat;
+    const summary = { id: chat.id, title: chat.title, createdAt: chat.createdAt, updatedAt: chat.updatedAt, messageCount: chat.messages.length, preview: chat.messages.at(-1).text.replace(/[#*_`>-]/g, "").replace(/\s+/g, " ").trim().slice(0, 120) };
+    aiState.chats = [summary, ...aiState.chats.filter((entry) => entry.id !== chat.id)];
+    renderAi(); if (stillHere) aiScrollToEnd();
+  } catch (error) {
+    aiState.pending = null; renderAi(); showToast(error.message);
+    if ((aiState.current?.id || null) === chatId && !aiInput.value) { aiInput.value = question; resizeAiInput(); } // give the question back so it can be sent again
+  }
+}
+function resizeAiInput() { aiInput.style.height = "auto"; aiInput.style.height = `${Math.min(aiInput.scrollHeight, 140)}px`; }
+function stopAi() { Object.assign(aiState, { chats: [], current: null, loaded: false, enabled: true, pending: null, historyOpen: false }); aiThread.innerHTML = ""; aiInput.value = ""; }
+
+document.querySelector("#aiButton").addEventListener("click", () => {
+  const page = document.querySelector(".user-page.active-user-page")?.dataset.page;
+  activateStoreTab(page === "ai" ? "home" : "ai"); // an open note saves itself on the way out
+});
+document.querySelector("#aiNewChat").addEventListener("click", newAiChat);
+document.querySelector("#aiHistoryToggle").addEventListener("click", () => { aiState.historyOpen = !aiState.historyOpen; renderAi(); });
+document.querySelector("#aiComposer").addEventListener("submit", (event) => { event.preventDefault(); askAiQuestion(aiInput.value); });
+aiInput.addEventListener("input", resizeAiInput);
+aiInput.addEventListener("keydown", (event) => { if (event.key === "Enter" && !event.shiftKey && !event.isComposing) { event.preventDefault(); askAiQuestion(aiInput.value); } });
+document.querySelector(".user-page[data-page=ai]").addEventListener("click", (event) => {
+  const sample = event.target.closest(".ai-sample"); if (sample) return askAiQuestion(sample.dataset.question);
+  if (event.target.closest("#aiSeeAll")) { aiState.historyOpen = true; renderAi(); aiScroller().scrollTop = 0; return; }
+  const row = event.target.closest(".ai-chat-row"); if (!row) return;
+  if (event.target.closest(".ai-chat-delete")) deleteAiChat(row.dataset.chatId); else openAiChat(row.dataset.chatId);
+});
+userShell.addEventListener("page:change", (event) => {
+  document.querySelector("#aiButton").classList.toggle("active", event.detail === "ai");
+  if (event.detail !== "ai") return;
+  renderAi(); if (aiState.current) aiScrollToEnd();
+  loadAiChats();
+});
+
+// ---- Sharing an invoice: a link the customer can open, and the WhatsApp message around it ----
+
+// New bills carry their share token from the server, so the customer link can be built inside the
+// tap that opens WhatsApp — no await in the way, nothing for a popup blocker to catch. Bills made
+// before this existed get a token from /share the first time they are opened.
+const mintedTokens = new Map();
+function invoiceUrl(bill) {
+  const token = bill.shareToken || mintedTokens.get(bill.id);
+  if (!token) return null;
+  const base = String(platform.appUrl || "").replace(/\/+$/, "") || location.origin;
+  return `${base}/invoice/${token}`;
+}
+// The link always goes into the message. If the store is running on a local address the customer
+// will not be able to open it once they leave the shop, so the store is told to set a public
+// address — once per session, not on every bill — but the link is never silently dropped.
+const PRIVATE_HOST = /^(localhost|127\.|0\.0\.0\.0$|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[::1\]$)|\.local$/i;
+function linkReachesCustomers(url) {
+  try { return !PRIVATE_HOST.test(new URL(url).hostname); } catch { return false; }
+}
+let warnedAboutLocalLink = false;
+function customerInvoiceUrl(bill) {
+  const url = invoiceUrl(bill);
+  if (!url) return null;
+  if (!linkReachesCustomers(url) && !warnedAboutLocalLink) {
+    warnedAboutLocalLink = true;
+    showToast("This invoice link points at a local address. Set the public app address under Settings → Platform profile so customers can open it.");
+  }
+  return url;
+}
+async function ensureInvoiceUrl(bill) {
+  const existing = invoiceUrl(bill);
+  if (existing) return existing;
+  try {
+    const result = await apiRequest(`/api/store/bills/${encodeURIComponent(bill.id)}/share`, { method: "POST" });
+    mintedTokens.set(bill.id, result.token);
+    return invoiceUrl(bill);
+  } catch { return null; }
+}
+
+// The message a customer receives: who sold it, what it came to, and a link. The itemised bill,
+// the tax split and every other particular are on the invoice the link opens — repeating them in a
+// chat only buries the one number the customer is looking for. WhatsApp renders *bold*; the rest is
+// plain text so it survives forwarding.
+function invoiceText(bill, link) {
+  const profile = storeState.profile || {};
+  const settings = profile.settings || {};
+  const name = profile.storeName || profile.name || "Our store";
+  const at = new Date(bill.createdAt);
+  const paid = bill.status === "completed" || bill.status === "refunded";
+  // No invoice number until the bill is paid, so an unpaid one is headed as the bill it still is.
+  const reference = bill.invoiceNumber
+    ? `${settings.gstin ? "Tax Invoice" : "Invoice"} ${bill.invoiceNumber}`
+    : `Bill ${billNumber(bill)}`;
+  const method = PAYMENT_LABELS[bill.paymentMethod] || bill.paymentMethod;
+  const statusNote = { cancelled: "CANCELLED", refunded: "REFUNDED" }[bill.status];
+
+  const out = [
+    `*${name}*`,
+    `${reference} · ${formatShortDate(at)}, ${formatClock(at)}`,
+    "",
+    `*${paid ? "Amount paid" : "Amount due"} ${formatMoney(bill.total)}* · ${method} · ${plural(bill.itemCount, "item")}`,
+  ];
+  if (statusNote) out.push(statusNote);
+  if (link) out.push("", `Invoice: ${link}`);
+  if (settings.invoiceNote) out.push("", settings.invoiceNote);
+
+  const footer = [name, settings.showContactOnInvoice !== false ? profile.phone : ""].filter(Boolean).join(" · ");
+  if (footer) out.push(settings.invoiceNote ? footer : `\n${footer}`);
+
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 const whatsappDigits = (phone) => { let digits = String(phone || "").replace(/\D/g, ""); if (digits.length === 10) digits = platform.whatsappCountryCode + digits; return digits; };
-function whatsappLink(bill, phone) { return `https://wa.me/${whatsappDigits(phone)}?text=${encodeURIComponent(invoiceText(bill))}`; }
+function whatsappLink(message, phone) { return `https://wa.me/${whatsappDigits(phone)}?text=${encodeURIComponent(message)}`; }
 // Hands the invoice to WhatsApp without leaving this page. On phones a new browser window would stay behind as a blank
 // page once WhatsApp took over, so the app is opened directly through its URL scheme; desktops get WhatsApp Web in a new tab.
-function openWhatsApp(bill, phone) {
-  const digits = whatsappDigits(phone); const text = encodeURIComponent(invoiceText(bill)); const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) {
-    // Intent URL: opens the WhatsApp app when installed, otherwise falls back to wa.me — either way this page stays put.
-    location.href = `intent://send?phone=${digits}&text=${text}#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${encodeURIComponent(`https://wa.me/${digits}?text=${text}`)};end`;
-  } else if (/iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
-    location.href = `whatsapp://send?phone=${digits}&text=${text}`;
-  } else {
-    const link = Object.assign(document.createElement("a"), { href: whatsappLink(bill, phone), target: "_blank", rel: "noopener" });
-    document.body.append(link); link.click(); link.remove();
-  }
+// If nothing takes over the screen within a moment — WhatsApp is not installed, or a desktop browser is pretending to be a
+// phone (DevTools device mode sends an Android user agent, and desktop Chrome has no handler for intent:// links) — the same
+// conversation opens in WhatsApp Web instead, so the button never silently does nothing.
+function openWhatsApp(message, phone) {
+  const digits = whatsappDigits(phone); const text = encodeURIComponent(message); const ua = navigator.userAgent;
+  const web = whatsappLink(message, phone);
+  const openWeb = () => { const tab = window.open(web, "_blank"); if (tab) tab.opener = null; else location.href = web; }; // a blocked pop-up still gets there
+  const android = /Android/i.test(ua) || navigator.userAgentData?.platform === "Android";
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!android && !ios) { openWeb(); return; }
+  const fallback = setTimeout(() => { if (!document.hidden) openWeb(); }, 1500);
+  const settle = () => clearTimeout(fallback); // the app took over (page hidden) or the fallback URL is loading in this tab
+  document.addEventListener("visibilitychange", () => { if (document.hidden) settle(); }, { once: true });
+  window.addEventListener("pagehide", settle, { once: true });
+  // Android: an intent URL opens the app when installed and otherwise loads wa.me in this tab. iOS: the app's own URL scheme.
+  location.href = android
+    ? `intent://send?phone=${digits}&text=${text}#Intent;scheme=whatsapp;package=com.whatsapp;S.browser_fallback_url=${encodeURIComponent(web)};end`
+    : `whatsapp://send?phone=${digits}&text=${text}`;
 }
 // Customer mobile number → open WhatsApp with the invoice → mark the order "WhatsApp sent".
 async function sendInvoiceOnWhatsApp(bill, phoneOverride) {
   const phone = phoneOverride !== undefined && phoneOverride.trim() ? phoneOverride.trim() : bill.customerPhone;
-  openWhatsApp(bill, phone); // synchronously, inside the tap, so browsers treat it as a user action
+  // Nearly always already there (minted with the bill, or pre-warmed when the row was opened).
+  if (!invoiceUrl(bill)) await ensureInvoiceUrl(bill);
+  openWhatsApp(invoiceText(bill, customerInvoiceUrl(bill)), phone); // inside the tap, so browsers treat it as a user action
   try {
     await updateBill(bill.id, { whatsappSent: true, ...(phone !== bill.customerPhone ? { customerPhone: phone } : {}) });
     renderStorePages(); showToast(`${invoiceLabel(bill)} marked as sent on WhatsApp`);
   } catch (error) { showToast(error.message); }
 }
+
+// ---- View invoice: the customer's receipt, rendered from the shared template ----
+const invoicePopup = document.querySelector("#invoicePopup");
+let invoiceOnScreen = null;
+function invoiceViewData(bill) {
+  const profile = storeState.profile || {};
+  const settings = profile.settings || {};
+  const showContact = settings.showContactOnInvoice !== false;
+  return {
+    store: {
+      name: profile.storeName || profile.name || "Store", owner: profile.name || "",
+      phone: showContact ? profile.phone || "" : "", address: showContact ? profile.address || "" : "",
+      businessType: profile.businessType || "",
+      legalName: settings.legalName || "", gstin: settings.gstin || "",
+      placeOfSupply: settings.placeOfSupply || "", fssai: settings.fssai || "",
+    },
+    invoiceNote: settings.invoiceNote || "", terms: settings.terms || "",
+    currency: platform.currency || "INR",
+    platformName: platform.platformName || "Ailexity Retail",
+    bill,
+  };
+}
+function openInvoiceView(bill) {
+  invoiceOnScreen = bill;
+  document.querySelector("#invoicePopupTitle").textContent = invoiceLabel(bill);
+  document.querySelector("#invoiceBody").innerHTML = window.AilexityInvoice.render(invoiceViewData(bill));
+  invoicePopup.hidden = false;
+  document.querySelector("#invoiceClose").focus();
+  ensureInvoiceUrl(bill); // so "Copy invoice link" is ready by the time it is tapped
+}
+function closeInvoiceView() { invoicePopup.hidden = true; invoiceOnScreen = null; }
+document.querySelector("#invoiceClose").addEventListener("click", closeInvoiceView);
+invoicePopup.addEventListener("click", (event) => { if (event.target === invoicePopup) closeInvoiceView(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape" && !invoicePopup.hidden) closeInvoiceView(); });
+document.querySelector("#invoiceShareLink").addEventListener("click", async () => {
+  if (!invoiceOnScreen) return;
+  const url = invoiceUrl(invoiceOnScreen) || await ensureInvoiceUrl(invoiceOnScreen);
+  if (!url) return showToast("Could not create a link for this invoice");
+  try { await navigator.clipboard.writeText(url); showToast("Invoice link copied"); }
+  catch { showToast("Copy needs HTTPS. Send it on WhatsApp instead."); }
+});
+document.querySelector("#invoicePrint").addEventListener("click", () => {
+  if (!invoiceOnScreen) return;
+  const url = invoiceUrl(invoiceOnScreen);
+  if (url) window.open(url, "_blank", "noopener");
+  else showToast("Preparing the invoice link — try again in a moment");
+});
 
 // Orders page: bills newest first, filtered by status / today, expandable to the full order detail and lifecycle actions
 function orderDetail(bill, now) {
@@ -1035,6 +1256,7 @@ function renderHistory() {
     const open = storeState.expandedBill === bill.id; const [dotClass, dotIcon] = ORDER_DOTS[bill.status] || ORDER_DOTS.completed;
     const actions = [
       bill.status === "pending" ? `<select data-paid-method aria-label="Paid by"><option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option></select><button type="button" data-bill-action="completed">Mark paid</button>` : "",
+      `<button type="button" class="ghost-button" data-bill-action="view">View invoice</button>`,
       bill.status === "cancelled" ? "" : `${bill.customerPhone ? "" : `<input data-wa-phone type="tel" inputmode="tel" maxlength="20" placeholder="Customer mobile" aria-label="Customer mobile number" />`}<button type="button" class="whatsapp-button" data-bill-action="whatsapp">${bill.whatsappSentAt ? "Resend on WhatsApp" : "Send invoice on WhatsApp"}</button><button type="button" class="ghost-button" data-bill-action="copy">Copy invoice</button>`,
       bill.status === "pending" ? `<button type="button" class="danger-button" data-bill-action="cancelled">Cancel bill</button>` : bill.status === "completed" ? `<button type="button" class="danger-button" data-bill-action="refunded">Refund</button>` : "",
     ].join("");
@@ -1125,9 +1347,10 @@ document.querySelector("#historyList").addEventListener("click", async (event) =
   const row = event.target.closest("[data-bill-id]"); if (!row) return;
   const bill = findBill(row.dataset.billId); if (!bill) return;
   const action = event.target.closest("[data-bill-action]")?.dataset.billAction;
-  if (!action) { if (event.target.closest(".bill-summary")) { storeState.expandedBill = storeState.expandedBill === bill.id ? null : bill.id; renderHistory(); } return; }
+  if (!action) { if (event.target.closest(".bill-summary")) { storeState.expandedBill = storeState.expandedBill === bill.id ? null : bill.id; renderHistory(); if (storeState.expandedBill === bill.id) ensureInvoiceUrl(bill); } return; }
   if (action === "whatsapp") return sendInvoiceOnWhatsApp(bill, row.querySelector("[data-wa-phone]")?.value);
-  if (action === "copy") { try { await navigator.clipboard.writeText(invoiceText(bill)); showToast(`${invoiceLabel(bill)} copied`); } catch { showToast("Copy failed. Use Send on WhatsApp instead."); } return; }
+  if (action === "copy") { if (!invoiceUrl(bill)) await ensureInvoiceUrl(bill); try { await navigator.clipboard.writeText(invoiceText(bill, customerInvoiceUrl(bill))); showToast(`${invoiceLabel(bill)} copied`); } catch { showToast("Copy failed. Use Send on WhatsApp instead."); } return; }
+  if (action === "view") return openInvoiceView(bill);
   try {
     if (action === "completed") { await updateBill(bill.id, { status: "completed", paymentMethod: row.querySelector("[data-paid-method]").value }); showToast(`Payment confirmed · ${invoiceLabel(findBill(bill.id))} generated`); }
     if (action === "cancelled") { if (!window.confirm(`Cancel bill ${billNumber(bill)}? Its items go back into stock.`)) return; await updateBill(bill.id, { status: "cancelled" }); await loadItems(); showToast(`Bill ${billNumber(bill)} cancelled`); }
@@ -1184,13 +1407,16 @@ function fillStoreSettings() {
   document.querySelector("#settingsStoreName").value = profile.storeName || ""; document.querySelector("#settingsOwnerName").value = profile.name || ""; document.querySelector("#settingsPhone").value = profile.phone || "";
   document.querySelector("#settingsBusinessType").value = profile.businessType || ""; document.querySelector("#settingsAddress").value = profile.address || "";
   document.querySelector("#settingsTaxRate").value = s.taxRate || ""; document.querySelector("#settingsTaxLabel").value = s.taxLabel || "Tax"; document.querySelector("#settingsInvoiceNote").value = s.invoiceNote || ""; document.querySelector("#settingsShowContact").checked = s.showContactOnInvoice !== false;
+  document.querySelector("#settingsLegalName").value = s.legalName || ""; document.querySelector("#settingsGstin").value = s.gstin || "";
+  document.querySelector("#settingsPlaceOfSupply").value = s.placeOfSupply || ""; document.querySelector("#settingsFssai").value = s.fssai || "";
+  document.querySelector("#settingsTerms").value = s.terms || "";
   document.querySelector("#settingsLowStock").value = s.lowStockDefault ?? LOW_STOCK_DEFAULT; document.querySelector("#settingsStockToasts").checked = s.stockToasts !== false;
   setText("#profileStoreDetails", [profile.storeName, profile.businessType, profile.address, profile.phone].filter(Boolean).join(" · ") || "Business profile and contact");
-  setText("#billingSettingsSummary", `${s.taxLabel || "Tax"} ${s.taxRate || 0}% by default · ${s.invoiceNote ? "note on invoices" : "no invoice note"}${s.showContactOnInvoice === false ? " · contact hidden" : ""}`);
+  setText("#billingSettingsSummary", [`${s.taxLabel || "Tax"} ${s.taxRate || 0}% by default`, s.gstin ? `GSTIN ${s.gstin}` : "no GSTIN yet", s.showContactOnInvoice === false ? "contact hidden" : null].filter(Boolean).join(" · "));
   setText("#inventorySettingsSummary", `Low-stock alert at ${s.lowStockDefault ?? LOW_STOCK_DEFAULT} · stock warnings ${s.stockToasts === false ? "off" : "on"}`);
-  setText("#profilePlan", planLabel(profile));
-  setText("#subscriptionDetails", `${planLabel(profile)}${profile.activatedAt ? ` · activated ${new Date(profile.activatedAt).toLocaleDateString()}` : ""}.`);
-  setText("#supportDetails", `To change your plan, contact ${platform.platformName}${platform.supportEmail || platform.supportPhone ? ` at ${[platform.supportEmail, platform.supportPhone].filter(Boolean).join(" · ")}` : " support"}.`);
+  setText("#profilePlan", profile.createdAt ? `Your store since ${new Date(profile.createdAt).toLocaleDateString()}` : "Your account and how to reach us");
+  setText("#subscriptionDetails", `${profile.storeName || profile.name} is yours to run — there is no plan to renew and nothing expires.${profile.createdAt ? ` You opened it on ${new Date(profile.createdAt).toLocaleDateString()}.` : ""}`);
+  setText("#supportDetails", `Something wrong? Write to us from Message ${platform.platformName} below${platform.supportEmail || platform.supportPhone ? `, or reach us at ${[platform.supportEmail, platform.supportPhone].filter(Boolean).join(" · ")}` : ""}.`);
   const security = document.querySelector("#storeSecuritySummary"); security.classList.toggle("attention", Boolean(profile.passwordResetRequired));
   security.textContent = profile.passwordResetRequired ? "Action needed: you're using a temporary password — set your own" : profile.passwordChangedAt ? `Password changed ${relativeTime(profile.passwordChangedAt)}` : "Change your password";
 }
@@ -1208,7 +1434,13 @@ document.querySelector("#storeProfileForm").addEventListener("submit", (event) =
 });
 document.querySelector("#storeBillingForm").addEventListener("submit", async (event) => {
   event.preventDefault();
-  await saveStoreSettings(event.target, { taxRate: document.querySelector("#settingsTaxRate").value, taxLabel: document.querySelector("#settingsTaxLabel").value, invoiceNote: document.querySelector("#settingsInvoiceNote").value, showContactOnInvoice: document.querySelector("#settingsShowContact").checked }, "Billing settings saved");
+  await saveStoreSettings(event.target, {
+    taxRate: document.querySelector("#settingsTaxRate").value, taxLabel: document.querySelector("#settingsTaxLabel").value,
+    invoiceNote: document.querySelector("#settingsInvoiceNote").value, showContactOnInvoice: document.querySelector("#settingsShowContact").checked,
+    legalName: document.querySelector("#settingsLegalName").value, gstin: document.querySelector("#settingsGstin").value,
+    placeOfSupply: document.querySelector("#settingsPlaceOfSupply").value, fssai: document.querySelector("#settingsFssai").value,
+    terms: document.querySelector("#settingsTerms").value,
+  }, "Billing settings saved");
   // A new default tax rate applies to the bill being built right now as well.
   document.querySelector("#cartTaxRate").value = storeState.profile?.settings?.taxRate || ""; renderCart();
 });
@@ -1227,30 +1459,91 @@ document.querySelector("#storePasswordForm").addEventListener("submit", async (e
 });
 
 function signOut() {
-  stopDashboard(); stopStoreMessages(); stopNotes(); adminSettings.data = null; landing.lastDay = null;
+  stopDashboard(); stopStoreMessages(); stopNotes(); stopAi(); adminSettings.data = null; landing.lastDay = null;
   localStorage.removeItem("ailexityAuthToken");
   sessionStorage.removeItem("ailexityAuthToken");
   authToken = null; storeState.profile = null;
-  closeUserDetails(); showOnboardingStep(null); closeItemForm(); document.querySelector(".toast")?.remove();
+  closeUserDetails(); closeItemForm(); document.querySelector(".toast")?.remove();
   document.querySelectorAll(".settings-group.open").forEach((group) => { group.classList.remove("open"); group.querySelector(".settings-form").hidden = true; group.querySelector(".settings-row").setAttribute("aria-expanded", "false"); }); // collapse any open panels for the next person
+  hideWelcome();
   adminShell.hidden = true;
   userShell.hidden = true;
   document.body.classList.remove("app-active");
-  landingScreen.hidden = false; document.body.classList.remove("signin-active"); setThemeColor("#14201a");
-  loginCard.hidden = true;
-  welcomeScreen.hidden = true;
+  showSignIn({ focus: false });
   resetLoginForm();
 }
 document.querySelector("#signOutButton").addEventListener("click", signOut);
 document.querySelector("#userSignOutButton").addEventListener("click", signOut);
 
-document.querySelector("#enterAppButton").addEventListener("click", () => {
-  landingScreen.hidden = true; document.body.classList.add("signin-active"); // sign-in screen gets its own background
-  welcomeScreen.hidden = false;
+// ---- Sign in / create account: the first screen, two cards over the same background ----
+function showSignIn({ focus = true } = {}) {
+  landingScreen.hidden = true; document.body.classList.add("signin-active"); setThemeColor("#f6f7f8");
+  authScreen.hidden = false;
   loginCard.hidden = false;
-  emailInput.focus();
+  signupCard.hidden = true;
+  if (focus) emailInput.focus(); // not on sign-out: the keyboard would cover the screen before anyone asked for it
+}
+function showSignUp() {
+  landingScreen.hidden = true; document.body.classList.add("signin-active");
+  authScreen.hidden = false;
+  loginCard.hidden = true;
+  signupCard.hidden = false;
+  setSignupMessage("");
+  document.querySelector("#signupStoreName").focus();
+}
+document.querySelector("#showSignupButton").addEventListener("click", showSignUp);
+document.querySelector("#showLoginButton").addEventListener("click", () => showSignIn());
+
+const setSignupMessage = (text, type = "") => { signupMessage.textContent = text; signupMessage.className = `form-message ${type}`; };
+const signupPasswordToggle = document.querySelector("#signupPasswordToggle");
+signupPasswordToggle.addEventListener("click", () => {
+  const field = document.querySelector("#signupPassword");
+  const showing = field.type === "text";
+  field.type = showing ? "password" : "text";
+  signupPasswordToggle.textContent = showing ? "Show" : "Hide";
 });
-document.querySelector("#landingSupport").addEventListener("click", () => showToast("Need access? Ask your workspace owner to add or restore your account"));
+
+// Creating the account signs the owner straight in: no activation key, no approval, no plan.
+signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fields = { storeName: "#signupStoreName", name: "#signupName", email: "#signupEmail", phone: "#signupPhone", password: "#signupPassword" };
+  const value = (key) => document.querySelector(fields[key]).value.trim();
+  document.querySelectorAll("#signupForm .field-error").forEach((node) => { node.textContent = ""; });
+  setSignupMessage("");
+
+  const problems = [
+    !value("storeName") && ["#signupStoreNameError", "What is your shop called?"],
+    !value("name") && ["#signupNameError", "Enter your name."],
+    !document.querySelector("#signupEmail").validity.valid || !value("email") ? ["#signupEmailError", "Enter a valid email address."] : null,
+    !/^\+?[0-9 ()-]{7,20}$/.test(value("phone")) && ["#signupPhoneError", "Enter a valid mobile number."],
+    document.querySelector("#signupPassword").value.length < 8 && ["#signupPasswordError", "Use at least 8 characters."],
+  ].filter(Boolean);
+  if (problems.length) { problems.forEach(([selector, text]) => { document.querySelector(selector).textContent = text; }); return; }
+
+  const submitButton = signupForm.querySelector(".submit-button");
+  submitButton.disabled = true; submitButton.querySelector("span").textContent = "Creating your store…";
+  try {
+    const response = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ storeName: value("storeName"), name: value("name"), email: value("email"), phone: value("phone"), password: document.querySelector("#signupPassword").value }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      // The server names the field it rejected, so the error lands under that input.
+      const target = result.field && document.querySelector(`#signup${result.field[0].toUpperCase()}${result.field.slice(1)}Error`);
+      if (target) target.textContent = result.error;
+      throw new Error(result.error || "Could not create the account");
+    }
+    authToken = result.token;
+    localStorage.setItem("ailexityAuthToken", authToken);
+    setSignupMessage("Store created. Opening your dashboard…", "success");
+    submitButton.querySelector("span").textContent = "Ready ✓";
+    setTimeout(() => { signupCard.hidden = true; openWorkspace(result, { welcome: "signup" }); }, 650);
+  } catch (error) {
+    setSignupMessage(error.message, "error");
+    submitButton.disabled = false; submitButton.querySelector("span").textContent = "Create store & start";
+  }
+});
 // No pinch or double-tap zoom anywhere: the viewport meta covers Android; iOS Safari needs the gesture events blocked as well.
 document.addEventListener("gesturestart", (event) => event.preventDefault(), { passive: false });
 document.addEventListener("touchmove", (event) => { if (event.scale !== undefined && event.scale !== 1) event.preventDefault(); }, { passive: false });
@@ -1311,8 +1604,69 @@ function tickLanding() {
   setText("#landingWeek", `Week ${isoWeek(now)} · Q${Math.floor(now.getMonth() / 3) + 1}`);
   landing.thought = dayOfYear(now) % THOUGHTS.length; renderThought();
 }
-document.querySelector("#landingNextThought").addEventListener("click", () => { landing.thought = (landing.thought + 1) % THOUGHTS.length; renderThought(); });
-tickLanding(); setInterval(tickLanding, 1000);
+setInterval(tickLanding, 1000);
+
+// ---- Welcome page: once, right after signing in or creating the store — never when a saved session reopens the app ----
+// It covers the workspace, which is already loading underneath, and has nothing to tap: swipe it up. A mouse can drag it,
+// a scroll wheel or trackpad pushes it away, and Enter / Space / Esc / Up / Page Down do the same from the keyboard.
+const welcome = { active: false, dragging: false, pointerId: null, startY: 0, lastY: 0, lastTime: 0, velocity: 0, queue: [] };
+const setShellsInert = (inert) => { adminShell.inert = inert; userShell.inert = inert; };
+function showWelcome(result, kind) {
+  const firstName = String(result.name || "").trim().split(/\s+/)[0];
+  setText("#landingWelcome", `${kind === "signup" ? "Welcome" : "Welcome back"}${firstName ? `, ${firstName}` : ""}`);
+  setText("#landingSwipeLabel", result.role === "store" ? "Swipe up to open your store" : "Swipe up to open the platform");
+  Object.assign(welcome, { active: true, dragging: false, queue: [] });
+  landingScreen.classList.remove("is-dragging", "is-leaving"); landingScreen.style.transform = "";
+  landingScreen.hidden = false; landing.lastDay = null; tickLanding(); // fresh clock, date, thought and month
+  setShellsInert(true); setThemeColor("#f6f7f8");
+  landingScreen.focus({ preventScroll: true });
+}
+// Runs `task` once the welcome page is out of the way (straight away if it is not showing).
+const afterWelcome = (task) => { if (welcome.active) welcome.queue.push(task); else task(); };
+function dismissWelcome() {
+  if (!welcome.active) return;
+  welcome.active = false; welcome.dragging = false;
+  landingScreen.classList.remove("is-dragging"); landingScreen.classList.add("is-leaving");
+  landingScreen.style.transform = "translateY(-104%)";
+  setShellsInert(false); setThemeColor("#ffffff"); landingScreen.blur();
+  const finish = () => { if (welcome.active || landingScreen.hidden) return; landingScreen.hidden = true; landingScreen.classList.remove("is-leaving"); landingScreen.style.transform = ""; };
+  landingScreen.addEventListener("transitionend", finish, { once: true }); setTimeout(finish, 700);
+  welcome.queue.splice(0).forEach((task) => task());
+}
+// Signing out while it shows: no animation, nothing left queued for the next person.
+function hideWelcome() {
+  Object.assign(welcome, { active: false, dragging: false, queue: [] });
+  setShellsInert(false); landingScreen.hidden = true;
+  landingScreen.classList.remove("is-dragging", "is-leaving"); landingScreen.style.transform = "";
+}
+landingScreen.addEventListener("pointerdown", (event) => {
+  if (!welcome.active || (event.pointerType === "mouse" && event.button !== 0)) return;
+  Object.assign(welcome, { dragging: true, pointerId: event.pointerId, startY: event.clientY, lastY: event.clientY, lastTime: event.timeStamp, velocity: 0 });
+  landingScreen.classList.add("is-dragging");
+  try { landingScreen.setPointerCapture(event.pointerId); } catch { /* the pointer already left; moves still arrive while it is over the page */ }
+});
+landingScreen.addEventListener("pointermove", (event) => {
+  if (!welcome.dragging || event.pointerId !== welcome.pointerId) return;
+  const elapsed = event.timeStamp - welcome.lastTime;
+  if (elapsed > 0) welcome.velocity = (event.clientY - welcome.lastY) / elapsed; // px per ms; negative is upwards
+  welcome.lastY = event.clientY; welcome.lastTime = event.timeStamp;
+  const pulled = event.clientY - welcome.startY;
+  landingScreen.style.transform = `translateY(${pulled < 0 ? pulled : pulled * 0.15}px)`; // downwards it only gives a little
+});
+function endWelcomeDrag(event) {
+  if (!welcome.dragging || event.pointerId !== welcome.pointerId) return;
+  welcome.dragging = false; landingScreen.classList.remove("is-dragging");
+  const pulled = welcome.lastY - welcome.startY; const flick = event.timeStamp - welcome.lastTime < 120 && welcome.velocity < -0.45;
+  if (-pulled > landingScreen.clientHeight * 0.2 || (flick && pulled < -24)) dismissWelcome();
+  else landingScreen.style.transform = ""; // not far enough: it springs back
+}
+landingScreen.addEventListener("pointerup", endWelcomeDrag);
+landingScreen.addEventListener("pointercancel", endWelcomeDrag);
+landingScreen.addEventListener("wheel", (event) => { if (welcome.active && event.deltaY > 8) dismissWelcome(); }, { passive: true });
+document.addEventListener("keydown", (event) => {
+  if (!welcome.active || !["Enter", " ", "Escape", "ArrowUp", "PageDown"].includes(event.key)) return;
+  event.preventDefault(); dismissWelcome();
+});
 
 async function apiRequest(url, options = {}) {
   const response = await fetch(`${API_BASE}${url}`, { ...options, headers: { "content-type": "application/json", authorization: `Bearer ${authToken}`, ...(options.headers || {}) } });
@@ -1349,7 +1703,7 @@ document.querySelector("#inboxList").addEventListener("click", async (event) => 
 });
 const adminState = { users: [], filter: "all" };
 // "All" hides archived retailers; they have their own tab so the working list stays clean.
-const USER_FILTERS = { all: (user) => user.status !== "archived", pending: (user) => user.status === "pending_verification" || user.status === "verified", active: (user) => user.status === "active", suspended: (user) => user.status === "suspended", archived: (user) => user.status === "archived" };
+const USER_FILTERS = { all: (user) => user.status !== "archived", active: (user) => user.status === "active", suspended: (user) => user.status === "suspended", archived: (user) => user.status === "archived" };
 function userInitial(name) { return String(name || "?").trim().charAt(0).toUpperCase(); }
 function renderUsers() {
   const list = document.querySelector("#userList");
@@ -1357,7 +1711,7 @@ function renderUsers() {
   setChipCounts(document.querySelector("#userFilters"), counts);
   const users = adminState.users.filter(USER_FILTERS[adminState.filter]);
   document.querySelector("#userCount").textContent = `${plural(counts.all, "retailer")}${counts.archived ? ` · ${counts.archived} archived` : ""}`;
-  if (!users.length) { list.innerHTML = `<div class="empty-users">${adminState.filter === "all" ? "No retailers yet. Add the first store above." : `No ${adminState.filter} retailers.`}</div>`; return; }
+  if (!users.length) { list.innerHTML = `<div class="empty-users">${adminState.filter === "all" ? "No stores yet. They appear here as soon as someone signs up." : `No ${adminState.filter} retailers.`}</div>`; return; }
   list.innerHTML = users.map((user) => `<button class="user-row user-row-button ${user.status === "archived" ? "user-archived" : ""}" type="button" data-user-id="${user.id}"><span class="user-avatar">${escapeHtml(userInitial(user.storeName || user.name))}</span><span><strong>${escapeHtml(user.storeName || user.name)}</strong><small>${escapeHtml(user.storeName ? `${user.name} · ` : "")}${escapeHtml(user.email)}</small></span>${userStatusBadge(user.status)}<b>›</b></button>`).join("");
   list.querySelectorAll("[data-user-id]").forEach((row) => row.addEventListener("click", () => openUserDetails(row.dataset.userId)));
   renderMessageRecipients();
@@ -1408,8 +1762,8 @@ async function openUserDetails(userId) {
     document.querySelector("#detailsTitle").textContent = user.storeName || user.name;
     document.querySelector("#editStoreName").value = user.storeName || ""; document.querySelector("#editUserName").value = user.name; document.querySelector("#editUserEmail").value = user.email; document.querySelector("#editUserPhone").value = user.phone;
     document.querySelector("#editBusinessType").value = user.businessType || ""; document.querySelector("#editAddress").value = user.address || "";
-    document.querySelector("#editUserStatus").value = user.status; document.querySelector("#editUserDuration").value = String(user.activationDurationDays || 0);
-    document.querySelector("#editUserMessage").textContent = `${USER_STATUS_LABELS[user.status] || user.status} · Created ${new Date(user.createdAt).toLocaleDateString()}${user.accountExpiresAt ? ` · Expires ${new Date(user.accountExpiresAt).toLocaleDateString()}` : " · No expiry"}`;
+    document.querySelector("#editUserStatus").value = user.status;
+    document.querySelector("#editUserMessage").textContent = `${USER_STATUS_LABELS[user.status] || user.status} · Signed up ${new Date(user.createdAt).toLocaleDateString()}`;
     document.querySelector("#archiveUserButton").hidden = user.status === "archived";
     document.querySelector("#deleteUserButton").hidden = user.status !== "archived";
     document.querySelector("#userDetails").hidden = false;
@@ -1420,7 +1774,7 @@ document.querySelector("#closeDetailsButton").addEventListener("click", closeUse
 document.querySelector("#userEditForm").addEventListener("submit", async (event) => {
   event.preventDefault(); const message = document.querySelector("#editUserMessage");
   try {
-    await apiRequest(`/api/admin/stores/${encodeURIComponent(selectedUserId)}`, { method: "PATCH", body: JSON.stringify({ storeName: document.querySelector("#editStoreName").value, name: document.querySelector("#editUserName").value, email: document.querySelector("#editUserEmail").value, phone: document.querySelector("#editUserPhone").value, businessType: document.querySelector("#editBusinessType").value, address: document.querySelector("#editAddress").value, status: document.querySelector("#editUserStatus").value, activationDurationDays: document.querySelector("#editUserDuration").value }) });
+    await apiRequest(`/api/admin/stores/${encodeURIComponent(selectedUserId)}`, { method: "PATCH", body: JSON.stringify({ storeName: document.querySelector("#editStoreName").value, name: document.querySelector("#editUserName").value, email: document.querySelector("#editUserEmail").value, phone: document.querySelector("#editUserPhone").value, businessType: document.querySelector("#editBusinessType").value, address: document.querySelector("#editAddress").value, status: document.querySelector("#editUserStatus").value }) });
     message.textContent = "Changes saved."; await refreshAdmin(); openUserDetails(selectedUserId);
   } catch (error) { message.textContent = error.message; }
 });
@@ -1436,43 +1790,10 @@ document.querySelector("#deleteUserButton").addEventListener("click", async () =
   catch (error) { document.querySelector("#editUserMessage").textContent = error.message; }
 });
 
-// Add retailer: details → OTP verification → activation key (login credentials) → ready to sign in
-const onboarding = { form: document.querySelector("#userCreateForm"), otp: document.querySelector("#otpForm"), done: document.querySelector("#onboardingDone") };
-function showOnboardingStep(step) { onboarding.form.hidden = step !== "details"; onboarding.otp.hidden = step !== "verify"; onboarding.done.hidden = step !== "ready"; }
-document.querySelector("#addUserButton").addEventListener("click", () => { onboarding.form.reset(); document.querySelector("#newUserDuration").value = String(adminSettings.data?.defaultPlanDays ?? 30); document.querySelector("#userCreateMessage").textContent = ""; showOnboardingStep("details"); document.querySelector("#newStoreName").focus(); });
-document.querySelector("#userCreateCancel").addEventListener("click", () => showOnboardingStep(null));
-document.querySelector("#onboardingClose").addEventListener("click", () => showOnboardingStep(null));
-document.querySelector("#onboardingCopyKey").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText(onboarding.copyText || document.querySelector("#onboardingKey").textContent); showToast("Sign-in details copied"); } catch { showToast("Copy failed. Select the details and copy them manually."); }
-});
-document.querySelector("#userCreateForm").addEventListener("submit", async (event) => {
-  event.preventDefault(); const message = document.querySelector("#userCreateMessage"); message.textContent = "Creating account and sending the verification code…";
-  const payload = { storeName: document.querySelector("#newStoreName").value, name: document.querySelector("#newUserName").value, email: document.querySelector("#newUserEmail").value, phone: document.querySelector("#newUserPhone").value, businessType: document.querySelector("#newBusinessType").value, address: document.querySelector("#newAddress").value, activationDurationDays: document.querySelector("#newUserDuration").value };
-  try {
-    const result = await apiRequest("/api/admin/stores", { method: "POST", body: JSON.stringify(payload) });
-    pendingStoreId = result.id; document.querySelector("#otpForm").reset();
-    document.querySelector("#otpHint").textContent = `${result.message} to ${result.email}. Enter it below to verify the retailer.`;
-    document.querySelector("#otpMessage").textContent = ""; showOnboardingStep("verify"); document.querySelector("#newUserOtp").focus(); refreshAdmin();
-  } catch (error) { message.textContent = error.message; }
-});
-document.querySelector("#otpForm").addEventListener("submit", async (event) => {
-  event.preventDefault(); const message = document.querySelector("#otpMessage"); message.textContent = "Verifying…";
-  try {
-    const result = await apiRequest("/api/admin/stores/verify-otp", { method: "POST", body: JSON.stringify({ storeId: pendingStoreId, otp: document.querySelector("#newUserOtp").value }) });
-    const email = document.querySelector("#newUserEmail").value.trim();
-    document.querySelector("#onboardingDoneText").textContent = result.emailed
-      ? `A welcome email with these sign-in details was sent to ${email}. On first sign-in the retailer enters their email, the temporary password and the activation key, then sets their own password under Profile → Security.`
-      : `Email is not configured on the server, so share these sign-in details with the retailer yourself (${email}). On first sign-in they enter their email, the temporary password and the activation key, then set their own password under Profile → Security.`;
-    document.querySelector("#onboardingPassword").textContent = result.temporaryPassword;
-    document.querySelector("#onboardingKey").textContent = result.activationKey;
-    onboarding.copyText = `Sign-in email: ${email}\nTemporary password: ${result.temporaryPassword}\nActivation key: ${result.activationKey}`;
-    showOnboardingStep("ready"); await refreshAdmin();
-  } catch (error) { message.textContent = error.message; }
-});
-
+// A saved session opens the app directly — no welcome page. Without one, the sign-in screen is already showing.
 if (authToken) {
   fetch(`${API_BASE}/api/auth/session`, { headers: { authorization: `Bearer ${authToken}` } })
     .then(async (response) => { if (!response.ok) throw new Error("Session expired"); return response.json(); })
     .then((result) => openWorkspace(result))
-    .catch(() => { localStorage.removeItem("ailexityAuthToken"); sessionStorage.removeItem("ailexityAuthToken"); authToken = null; });
-}
+    .catch(() => { localStorage.removeItem("ailexityAuthToken"); sessionStorage.removeItem("ailexityAuthToken"); authToken = null; document.documentElement.classList.remove("restoring"); });
+} else document.documentElement.classList.remove("restoring");

@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6f7f8" />
+    <!-- Installed (Add to Home Screen) the app runs full screen. Every screen is light, so the iPhone status bar keeps its own light background and dark text. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Ailexity" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <title>Ailexity Retail | Sign in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="invoice.css" />
+    <link rel="stylesheet" href="styles.css" />
+    <!-- A saved session is checked before anything shows, so the sign-in form does not flash on the way into the app. -->
+    <script>try { if (localStorage.getItem("ailexityAuthToken") || sessionStorage.getItem("ailexityAuthToken")) document.documentElement.classList.add("restoring"); } catch (error) {}</script>
+  </head>
+  <body class="signin-active">
+    <main class="app-stage">
+      <div class="phone-ui">
+        <!-- Welcome: shown once, right after signing in or creating a store (never when a saved session reopens the app), over the
+             workspace that is already loading underneath. Nothing to tap: swipe it up (or drag, scroll, or press Enter / Esc / Up). -->
+        <section class="landing-screen" id="landingScreen" role="dialog" aria-modal="true" aria-labelledby="landingWelcome" aria-describedby="landingHint" tabindex="-1" hidden>
+          <header class="landing-top">
+            <span class="auth-brand" aria-hidden="true"><span class="auth-brand-word">AILEXITY</span><span class="auth-brand-sub">RETAIL</span></span>
+            <div class="landing-top-right"><span class="landing-week" id="landingWeek">Week –</span><span class="landing-daylight" id="landingDaylight" role="img" aria-label="Time of day"></span></div>
+          </header>
+          <div class="landing-body">
+            <div class="landing-hero">
+              <p class="landing-welcome" id="landingWelcome">Welcome back</p>
+              <h1>Run your<br /><span>store smarter.</span></h1>
+              <p class="landing-sub">Everything is ready for today.</p>
+            </div>
+            <div class="landing-cards">
+              <div class="landing-clock"><strong id="landingTime">–</strong><span><b id="landingGreeting">Good day</b><span id="landingDate"></span></span><i aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg></i></div>
+              <div class="landing-tiles">
+                <article class="landing-tile tile-thought" aria-live="polite"><div class="tile-head"><span class="tile-label">Thought of the day</span><i class="tile-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18h6" /><path d="M10 21h4" /><path d="M8.5 14.5a5.5 5.5 0 1 1 7 0c-.8.7-1.2 1.4-1.3 2.5h-4.4c-.1-1.1-.5-1.8-1.3-2.5z" /></svg></i></div><strong id="landingQuote">–</strong><small id="landingQuoteBy"></small></article>
+                <article class="landing-tile tile-month"><div class="tile-head"><span class="tile-label">This month</span><i class="tile-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2.5" /><path d="M4 10h16" /><path d="M8 3v4" /><path d="M16 3v4" /></svg></i></div><strong id="landingMonthPercent">–</strong><small id="landingMonthNote"></small><b class="tile-progress"><i id="landingMonthBar"></i></b></article>
+              </div>
+            </div>
+          </div>
+          <div class="landing-swipe">
+            <span class="landing-swipe-arrows" aria-hidden="true"><svg viewBox="0 0 24 14"><path d="m5 11 7-7 7 7" /></svg><svg viewBox="0 0 24 14"><path d="m5 11 7-7 7 7" /></svg></span>
+            <span class="landing-swipe-label" id="landingSwipeLabel">Swipe up to open your store</span>
+            <span class="landing-swipe-handle" aria-hidden="true"></span>
+            <span class="sr-only" id="landingHint">Swipe up, or press Enter, to continue.</span>
+          </div>
+        </section>
+        <!-- Sign in and create your store: the first screen, in the website's look (light page, white card, dark pill). Wide screens
+             show the product beside the form, as the website's hero does. One sign-in form for every role: the server verifies the
+             role and the app opens the matching workspace. -->
+        <section class="auth" id="authScreen" aria-label="Ailexity Retail">
+          <div class="auth-main">
+            <header class="auth-top"><span class="auth-brand" role="img" aria-label="Ailexity Retail"><span class="auth-brand-word" aria-hidden="true">AILEXITY</span><span class="auth-brand-sub" aria-hidden="true">RETAIL</span></span></header>
+
+            <div class="auth-panel" id="loginCard">
+              <p class="auth-eyebrow">Welcome back</p>
+              <h1 class="auth-title">Sign in to<br /><span>your store.</span></h1>
+              <p class="auth-lead">One account for the counter, every phone in the shop and RET.ai.</p>
+              <form id="loginForm" class="auth-card" novalidate>
+                <div class="field-group"><label class="auth-label" for="email">Email</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m4 7 8 6 8-6" /></svg><input id="email" name="email" type="email" autocomplete="username" placeholder="you@store.com" /><svg class="field-check" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg></div><small class="field-error" id="emailError"></small></div>
+                <div class="field-group"><div class="auth-label-row"><label class="auth-label" for="password">Password</label><button type="button" class="auth-link" id="forgotButton">Forgot?</button></div><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" /><button type="button" class="auth-toggle" id="passwordToggle" aria-label="Show password">Show</button></div><small class="field-error" id="passwordError"></small></div>
+                <label class="auth-remember"><input id="remember" type="checkbox" /><span class="auth-check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg></span><span>Keep me signed in</span></label>
+                <button class="submit-button" type="submit"><span>Sign in</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+                <div class="form-message" id="formMessage" role="status" aria-live="polite"></div>
+              </form>
+              <p class="auth-switch">New to Ailexity Retail? <button type="button" class="auth-link" id="showSignupButton">Create your store <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></p>
+            </div>
+
+            <!-- Self-service sign-up: the account is live the moment this form is submitted. -->
+            <div class="auth-panel" id="signupCard" hidden>
+              <p class="auth-eyebrow">Create your store</p>
+              <h1 class="auth-title">Open your store<br /><span>in a minute.</span></h1>
+              <p class="auth-lead">Nothing to activate and nothing to pay &mdash; you land straight on your dashboard.</p>
+              <form id="signupForm" class="auth-card" novalidate>
+                <div class="field-group"><label class="auth-label" for="signupStoreName">Store name</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5 6 4.5h12l1.5 5" /><path d="M4.5 9.5h15v.5a2.6 2.6 0 0 1-5 1 2.6 2.6 0 0 1-5 0 2.6 2.6 0 0 1-5-1z" /><path d="M5.5 12.5v7h13v-7" /><path d="M10 19.5v-4h4v4" /></svg><input id="signupStoreName" name="storeName" maxlength="80" autocomplete="organization" placeholder="e.g. Sharma General Store" /></div><small class="field-error" id="signupStoreNameError"></small></div>
+                <div class="field-group"><label class="auth-label" for="signupName">Your name</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></svg><input id="signupName" name="name" maxlength="60" autocomplete="name" placeholder="Full name" /></div><small class="field-error" id="signupNameError"></small></div>
+                <div class="field-group"><label class="auth-label" for="signupEmail">Email</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="m4 7 8 6 8-6" /></svg><input id="signupEmail" name="email" type="email" autocomplete="email" placeholder="you@store.com" /></div><small class="field-error" id="signupEmailError"></small></div>
+                <div class="field-group"><label class="auth-label" for="signupPhone">Mobile number</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg><input id="signupPhone" name="phone" type="tel" autocomplete="tel" placeholder="98765 43210" /></div><small class="field-error" id="signupPhoneError"></small></div>
+                <div class="field-group"><label class="auth-label" for="signupPassword">Password</label><div class="auth-input"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg><input id="signupPassword" name="password" type="password" autocomplete="new-password" placeholder="At least 8 characters" /><button type="button" class="auth-toggle" id="signupPasswordToggle" aria-label="Show password">Show</button></div><small class="field-error" id="signupPasswordError"></small></div>
+                <button class="submit-button" type="submit"><span>Create store &amp; start</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button>
+                <div class="form-message" id="signupMessage" role="status" aria-live="polite"></div>
+              </form>
+              <p class="auth-switch">Already have an account? <button type="button" class="auth-link" id="showLoginButton">Sign in <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></button></p>
+            </div>
+
+            <ul class="auth-trust" aria-label="Opening a store"><li>No approval</li><li>No activation key</li><li>Nothing to renew</li></ul>
+          </div>
+
+          <!-- Wide screens: the product, as on the website. Pictures only; nothing here is a link. -->
+          <aside class="auth-visual" aria-hidden="true">
+            <div class="auth-visual-copy">
+              <p class="auth-eyebrow">Introducing RET.ai</p>
+              <p class="auth-visual-title">Bill fast.<br /><span>Ask anything.</span></p>
+            </div>
+            <div class="auth-stage">
+              <span class="auth-shadow auth-shadow-back"></span><span class="auth-shadow auth-shadow-front"></span>
+              <div class="auth-device auth-device-back"><div class="auth-bezel"><div class="auth-screen"><div class="auth-status"><b>9:52</b><i class="auth-cam"></i><svg viewBox="0 0 38 12"><rect x="0" y="7" width="2.6" height="4" rx=".6" /><rect x="4" y="5" width="2.6" height="6" rx=".6" /><rect x="8" y="3" width="2.6" height="8" rx=".6" /><rect x="12" y="1" width="2.6" height="10" rx=".6" /><rect x="19.5" y="1.2" width="15" height="9.6" rx="2.6" fill="none" stroke="currentColor" /><rect x="21.2" y="2.9" width="10.6" height="6.2" rx="1.4" /><rect x="35.4" y="4.3" width="1.6" height="3.4" rx=".8" /></svg></div><img src="assets/landing/dashboard.webp" alt="" width="780" height="1688" loading="lazy" decoding="async" /></div></div></div>
+              <div class="auth-device auth-device-front"><div class="auth-bezel"><div class="auth-screen"><div class="auth-status"><b>9:52</b><i class="auth-cam"></i><svg viewBox="0 0 38 12"><rect x="0" y="7" width="2.6" height="4" rx=".6" /><rect x="4" y="5" width="2.6" height="6" rx=".6" /><rect x="8" y="3" width="2.6" height="8" rx=".6" /><rect x="12" y="1" width="2.6" height="10" rx=".6" /><rect x="19.5" y="1.2" width="15" height="9.6" rx="2.6" fill="none" stroke="currentColor" /><rect x="21.2" y="2.9" width="10.6" height="6.2" rx="1.4" /><rect x="35.4" y="4.3" width="1.6" height="3.4" rx=".8" /></svg></div><img src="assets/landing/ai-new.webp" alt="" width="780" height="1688" loading="lazy" decoding="async" /></div></div></div>
+            </div>
+            <div class="auth-specs">
+              <div><i class="ret-mark"></i><strong class="is-word">RET.ai</strong><span>Answers from<br />your own bills</span></div>
+              <div><svg viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5" /><path d="M12 13.5v-4M9.5 2.75h5M18.2 6.6l1.6-1.6" /></svg><strong>60s</strong><span>Sign-up to<br />first bill</span></div>
+              <div><svg viewBox="0 0 24 24"><path d="M2.5 9a14.5 14.5 0 0 1 4.6-2.8M10.4 5.5A14.5 14.5 0 0 1 21.5 9M5.5 12.6a9.6 9.6 0 0 1 3.9-2.2M14.8 10.6a9.6 9.6 0 0 1 3.7 2M8.8 16a4.6 4.6 0 0 1 6.4 0M12 19.5h.01M3.5 3.5l17 17" /></svg><strong>0</strong><span>Internet needed<br />to bill</span></div>
+            </div>
+          </aside>
+        </section>
+
+        <!-- ===== SUPERADMIN: platform management ===== -->
+        <section class="admin-shell" id="adminShell" aria-label="Superadmin workspace" hidden>
+          <header class="workspace-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="pageTitle">Dashboard</h2></header>
+          <div class="workspace-pages">
+            <section class="workspace-page active-page" data-page="dashboard" aria-label="Platform dashboard">
+              <h1>Dashboard</h1>
+              <div class="dashboard-clock"><div><p id="dashboardGreeting">Good morning</p><strong id="dashboardDate"></strong></div><time id="dashboardTime"></time></div>
+              <div class="date-strip" id="dateStrip" aria-label="Choose a day"></div>
+              <article class="primary-metric"><span>USER ACTIVITY</span><strong><span id="dayEventCount">–</span><small id="dayEventUnit">events</small></strong><p id="dayEventLabel">Loading…</p><div class="metric-bars" id="weekBars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+              <div class="metric-grid"><article class="metric-card green-metric"><span>Active retailers</span><strong id="activeAccounts">–</strong><small id="activeAccountsNote">Loading…</small></article><article class="metric-card dark-metric"><span>Signed in now</span><strong id="signedInNow">–</strong><small id="signedInNote">Loading…</small></article></div>
+
+              <p class="section-label">Retailer statistics</p>
+              <div class="stat-tiles">
+                <article><span>Total</span><strong id="statRetailersTotal">–</strong></article>
+                <article class="tile-good"><span>Active</span><strong id="statRetailersActive">–</strong></article>
+                <article class="tile-danger"><span>Suspended</span><strong id="statRetailersSuspended">–</strong></article>
+                <article class="tile-muted"><span>Closed</span><strong id="statRetailersArchived">–</strong></article>
+              </div>
+
+              <p class="section-label">Order statistics</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Today</span><strong id="statOrdersToday">–</strong></article>
+                <article><span>This month</span><strong id="statOrdersMonth">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="statOrdersPending">–</strong></article>
+                <article class="tile-muted"><span>Cancelled</span><strong id="statOrdersCancelled">–</strong></article>
+              </div>
+
+              <p class="section-label">Revenue statistics</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Today</span><strong id="statRevenueToday">–</strong></article>
+                <article><span>This month</span><strong id="statRevenueMonth">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="statRevenuePending">–</strong></article>
+                <article><span>All time</span><strong id="statRevenueTotal">–</strong></article>
+              </div>
+
+              <article class="activity-card"><div class="card-heading"><strong>Alerts &amp; notifications</strong><button type="button" id="viewAlertsRetailers">Manage</button></div><div class="alert-list" id="alertList"><div class="empty-activity">Loading…</div></div></article>
+              <article class="activity-card"><div class="card-heading"><strong>Recent registrations</strong><button type="button" id="viewAllRetailers">View all</button></div><div id="registrationList"><div class="empty-activity">Loading…</div></div></article>
+              <article class="activity-card"><div class="card-heading"><strong>Recent activity</strong><button type="button" id="viewAllActivity">View all</button></div><div id="activityList"><div class="empty-activity">Loading…</div></div></article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · platform management</small></span></footer>
+            </section>
+
+            <section class="workspace-page" data-page="users" aria-label="Retailer management">
+              <p class="greeting">User management</p><h1>Retailers</h1>
+              <div class="users-toolbar"><span id="userCount">Retailers</span><span class="users-toolbar-note">Stores sign themselves up</span></div>
+              <!-- Messages to stores: composed here, shown as a popup on the store dashboards for the chosen duration. -->
+              <article class="settings-groups report-panel" id="messagePanel">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">✉</span><span><strong>Messages to stores</strong><small id="messagePanelSummary">Send a notice that pops up on store dashboards</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden>
+                    <form id="messageForm" class="message-form">
+                      <label>Title<input id="messageTitle" required maxlength="80" placeholder="e.g. New stock arrives Monday" /></label>
+                      <label>Message<textarea id="messageText" required maxlength="500" rows="3" placeholder="What should the stores know?"></textarea></label>
+                      <div class="form-row"><label>Type<select id="messageLevel"><option value="info">Information</option><option value="important">Important</option><option value="urgent">Urgent</option></select></label><label>Show for<select id="messageDuration"><option value="24">1 day</option><option value="72" selected>3 days</option><option value="168">1 week</option><option value="336">2 weeks</option><option value="720">30 days</option><option value="custom">Custom…</option></select></label></div>
+                      <label id="messageCustomDays" hidden>Number of days (1–90)<input id="messageDays" type="number" min="1" max="90" step="1" value="5" inputmode="numeric" /></label>
+                      <label class="check-row"><input type="checkbox" id="messageAll" checked /><span>Send to all stores</span></label>
+                      <div class="recipient-list" id="messageRecipients" hidden></div>
+                      <div class="form-actions"><button type="submit">Send message</button></div>
+                      <small class="settings-message" role="status"></small>
+                    </form>
+                    <p class="section-label">Sent messages</p>
+                    <div class="sent-messages" id="sentMessages"><div class="empty-activity">No messages sent yet.</div></div>
+                  </div>
+                </section>
+              </article>
+              <div class="chip-row" id="userFilters" role="tablist" aria-label="Filter retailers">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All</button>
+                <button type="button" class="chip" data-filter="active" role="tab" aria-selected="false">Active</button>
+                <button type="button" class="chip" data-filter="suspended" role="tab" aria-selected="false">Suspended</button>
+                <button type="button" class="chip" data-filter="archived" role="tab" aria-selected="false">Archived</button>
+              </div>
+
+              <article class="user-list" id="userList"></article>
+              <section class="user-details" id="userDetails" hidden>
+                <div class="details-header"><strong id="detailsTitle">Retailer details</strong><button type="button" id="closeDetailsButton" aria-label="Close">×</button></div>
+                <form id="userEditForm">
+                  <label>Store name<input id="editStoreName" maxlength="80" /></label>
+                  <label>Owner name<input id="editUserName" required /></label>
+                  <label>Email<input id="editUserEmail" required type="email" /></label>
+                  <label>Phone<input id="editUserPhone" required type="tel" /></label>
+                  <label>Business type<select id="editBusinessType"><option value="">Not set</option><option>Grocery</option><option>Pharmacy</option><option>Clothing</option><option>Electronics</option><option>Restaurant / Café</option><option>Hardware</option><option>Other</option></select></label>
+                  <label>Address<input id="editAddress" maxlength="160" /></label>
+                  <label>Status<select id="editUserStatus"><option value="active">Active</option><option value="suspended">Suspended</option><option value="archived">Archived</option></select></label>
+                  <small id="editUserMessage" role="status"></small>
+                  <div class="detail-actions"><button type="submit">Save changes</button><button type="button" id="resetPasswordButton">Reset password</button><button class="danger-button" type="button" id="archiveUserButton">Archive account</button><button class="danger-button" type="button" id="deleteUserButton" hidden>Delete permanently</button></div>
+                </form>
+              </section>
+            </section>
+
+            <section class="workspace-page" data-page="inbox" aria-label="Inbox page">
+              <p class="greeting">Messages from stores</p><h1>Inbox</h1>
+              <div class="users-toolbar"><span id="inboxCount">Messages from stores</span><button type="button" id="inboxRefresh">Refresh</button></div>
+              <div class="chip-row" id="inboxFilters" role="tablist" aria-label="Filter messages">
+                <button type="button" class="chip active" data-filter="open" role="tab" aria-selected="true">Open</button>
+                <button type="button" class="chip" data-filter="new" role="tab" aria-selected="false">New</button>
+                <button type="button" class="chip" data-filter="seen" role="tab" aria-selected="false">Seen</button>
+                <button type="button" class="chip" data-filter="resolved" role="tab" aria-selected="false">Resolved</button>
+                <button type="button" class="chip" data-filter="all" role="tab" aria-selected="false">All</button>
+              </div>
+              <article class="user-list inbox-list" id="inboxList"><div class="empty-users">Loading…</div></article>
+            </section>
+            <section class="workspace-page" data-page="settings" aria-label="Settings page">
+              <p class="greeting">App management</p><h1>Settings</h1>
+              <article class="settings-groups" id="adminSettings">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⌁</span><span><strong>Platform profile</strong><small id="platformProfileSummary">Business name, support contact, currency</small></span><b>›</b></button>
+                  <form class="settings-form" id="platformProfileForm" hidden>
+                    <label>Platform name<input id="platformName" required maxlength="60" /></label>
+                    <label>Support email<input id="supportEmail" type="email" placeholder="support@company.com" /></label>
+                    <label>Support phone<input id="supportPhone" type="tel" placeholder="+91 98765 43210" /></label>
+                    <div class="form-row"><label>Currency (ISO code)<input id="platformCurrency" list="currencyOptions" maxlength="3" required autocapitalize="characters" placeholder="INR" /><datalist id="currencyOptions"><option value="INR"></option><option value="USD"></option><option value="EUR"></option><option value="GBP"></option><option value="AED"></option><option value="SGD"></option><option value="AUD"></option><option value="CAD"></option><option value="JPY"></option><option value="LKR"></option><option value="NPR"></option><option value="BDT"></option><option value="PKR"></option><option value="MYR"></option><option value="ZAR"></option></datalist></label><label>WhatsApp country code<input id="whatsappCode" inputmode="numeric" maxlength="4" required placeholder="91" /></label></div>
+                    <label>Public app address<input id="platformAppUrl" type="url" inputmode="url" placeholder="https://pos.example.com" /></label>
+                    <p class="form-hint">The public address is what invoice links in WhatsApp messages point at. Leave it blank to use the server's <code>APP_URL</code>; if neither is set the link falls back to whatever address the app is open on, which customers cannot reach from outside the shop.</p>
+                    <p class="form-hint">The currency formats every amount shown to superadmins and retailers. The country code is added to 10-digit mobile numbers when invoices are sent on WhatsApp. Retailers see the support contact under Help &amp; support.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◷</span><span><strong>Retailer defaults</strong><small id="retailerDefaultsSummary">Default plan, expiry warnings, session length</small></span><b>›</b></button>
+                  <form class="settings-form" id="retailerDefaultsForm" hidden>
+                    <label>Session length (hours)<input id="sessionHours" type="number" min="1" max="720" step="1" inputmode="numeric" required /></label>
+                    <p class="form-hint">The expiry warning drives the "expiring soon" alert and the dashboard note. Session length applies to new sign-ins.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◉</span><span><strong>Alerts &amp; notifications</strong><small id="alertsSummary">Choose what appears on the dashboard</small></span><b>›</b></button>
+                  <form class="settings-form" id="alertsForm" hidden>
+                    <label class="check-row"><input type="checkbox" data-alert="pendingVerification" /><span>Retailers waiting for OTP verification</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="awaitingActivation" /><span>Retailers verified but not yet signed in</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="expired" /><span>Expired plans</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="suspended" /><span>Suspended accounts</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="pendingPayments" /><span>Orders awaiting payment across stores</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="lowStock" /><span>Items running low across stores</span></label>
+                    <label class="check-row"><input type="checkbox" data-alert="outOfStock" /><span>Items out of stock across stores</span></label>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⚙</span><span><strong>Security</strong><small id="adminSecuritySummary">Change the superadmin password</small></span><b>›</b></button>
+                  <form class="settings-form" id="adminPasswordForm" hidden>
+                    <label>Current password<input id="adminCurrentPassword" type="password" autocomplete="current-password" required /></label>
+                    <label>New password<input id="adminNewPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters" /></label>
+                    <label>Confirm new password<input id="adminConfirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+                    <p class="form-hint">Other superadmin sessions are signed out when the password changes. The new password replaces the one in the server configuration.</p>
+                    <div class="form-actions"><button type="submit">Update password</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group"><button type="button" class="settings-row" id="signOutButton"><span class="setting-icon logout-icon">↪</span><span><strong>Sign out</strong><small>End this superadmin session</small></span><b>›</b></button></section>
+              </article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · Ailexity Retail</small></span></footer>
+            </section>
+          </div>
+          <nav class="tab-bar" aria-label="Superadmin navigation">
+            <button class="tab-item active" type="button" data-page="dashboard" aria-current="page"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M10 20v-6h4v6" /></svg><span class="tab-label">Dashboard</span></button>
+            <button class="tab-item" type="button" data-page="users"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7" /><path d="M17.5 14a6 6 0 0 1 4 5.5" /></svg><span class="tab-label">Retailers</span></button>
+            <button class="tab-item" type="button" data-page="inbox"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="2.5" /><path d="m4 8 8 5.5L20 8" /></svg><span class="tab-label">Inbox</span><i class="tab-count" id="inboxTabCount" hidden></i></button>
+            <button class="tab-item" type="button" data-page="settings"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M18.5 7H20M4 17h1.5M10.5 17H20" /><circle cx="15.5" cy="7" r="2.5" /><circle cx="8" cy="17" r="2.5" /></svg><span class="tab-label">Settings</span></button>
+          </nav>
+        </section>
+
+        <!-- ===== RETAILER: store account ===== -->
+        <section class="user-shell" id="userShell" aria-label="Retailer workspace" hidden>
+          <!-- AI button: opens the RET.ai page. Notes button: opens the Notes page (neither is on the tab bar); the count is what is due today or overdue. -->
+          <header class="user-header app-header"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="userPageTitle">Dashboard</h2><button type="button" class="header-button ai-header-button" id="aiButton" aria-label="RET.ai assistant"><i class="ret-mark" aria-hidden="true"></i></button><button type="button" class="header-button" id="notesButton" aria-label="Notes and reminders"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="16.5" rx="2.5" /><path d="M9 2.5v3M15 2.5v3" /><path d="M8.5 10h7M8.5 13.5h7M8.5 17h4" /></svg><i class="tab-count" id="notesCount" hidden></i></button></header>
+          <div class="user-pages">
+            <section class="user-page active-user-page" data-page="home" aria-label="Retailer dashboard">
+              <p class="greeting" id="userGreeting">Good morning</p><h1>Dashboard</h1>
+              <div class="user-date-strip" id="userDateStrip" role="group" aria-label="Choose a day"></div>
+              <article class="activity-card store-messages" id="storeMessages" hidden><div class="card-heading"><strong id="storeMessagesTitle">Messages</strong><span class="badge badge-important" id="storeMessagesUnread" hidden></span></div><div id="storeMessagesList"></div></article>
+              <div class="stat-tiles stat-tiles-3">
+                <article class="tile-good"><span id="homeSalesLabel">Sales today</span><strong id="homeSalesToday">–</strong></article>
+                <article><span id="homeOrdersLabel">Orders today</span><strong id="homeOrdersToday">–</strong></article>
+                <article><span>Total items</span><strong id="homeTotalItems">–</strong></article>
+                <article><span id="homeMonthLabel">Monthly sale</span><strong id="homeSalesMonth">–</strong></article>
+                <article><span id="homeAvgLabel">Avg. order value</span><strong id="homeAvgOrder">–</strong></article>
+                <article class="tile-warn"><span>Pending payments</span><strong id="homePendingPayments">–</strong></article>
+              </div>
+              <div class="section-row"><p class="section-label">Sales analytics</p><div class="segmented" id="salesRange" role="tablist" aria-label="Sales range"><button type="button" class="active" data-range="daily" role="tab" aria-selected="true">Daily</button><button type="button" data-range="weekly" role="tab" aria-selected="false">Weekly</button><button type="button" data-range="monthly" role="tab" aria-selected="false">Monthly</button></div></div>
+              <article class="user-hero-card"><span id="homeRangeLabel">THIS WEEK</span><strong id="homeRangeTotal">–</strong><p id="homeSalesNote">Loading…</p><div class="user-chart" id="homeChart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></article>
+              <p class="section-label" id="homeOrdersSection">Order analytics · today</p>
+              <div class="stat-tiles">
+                <article class="tile-good"><span>Completed</span><strong id="homeOrdersCompleted">–</strong></article>
+                <article class="tile-warn"><span>Pending</span><strong id="homeOrdersPending">–</strong></article>
+                <article class="tile-muted"><span>Cancelled</span><strong id="homeOrdersCancelled">–</strong></article>
+                <article class="tile-danger"><span>Refunded</span><strong id="homeOrdersRefunded">–</strong></article>
+              </div>
+              <p class="section-label">Inventory</p>
+              <div class="stat-tiles stat-tiles-3">
+                <article><span>Available</span><strong id="homeItemsAvailable">–</strong></article>
+                <article class="tile-warn"><span>Low stock</span><strong id="homeItemsLow">–</strong></article>
+                <article class="tile-danger"><span>Out of stock</span><strong id="homeItemsOut">–</strong></article>
+              </div>
+              <!-- Notes & reminders: the next few reminders and latest notes; checklist items can be ticked right here. -->
+              <article class="activity-card store-messages home-notes" id="homeNotes"><div class="card-heading"><strong>Notes &amp; reminders</strong><button type="button" id="homeNotesSeeAll">See all</button></div><div id="homeNotesList"><div class="empty-activity">Loading…</div></div></article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail for growing stores</small></span></footer>
+            </section>
+
+            <!-- Notes: opened from the header button. A list of notes (tap one to open it) and reminders (notes with a date and time). -->
+            <section class="user-page" data-page="notes" aria-label="Notes page">
+              <p class="greeting">Notes &amp; reminders</p><h1>Notes</h1>
+              <div class="user-toolbar"><span id="noteCount">No notes yet</span><span class="note-actions"><button type="button" class="ghost-button" id="addReminderButton"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>Reminder</button><button type="button" id="addNoteButton">+ Note</button></span></div>
+              <div id="reminderSection" hidden><p class="section-label">Reminders</p><article class="item-list note-list" id="reminderList"></article></div>
+              <p class="section-label" id="noteListLabel" hidden>Notes</p>
+              <article class="item-list note-list" id="noteList"><div class="empty-list">Nothing here yet. Tap + Note to start writing, or Reminder to set one.</div></article>
+            </section>
+
+            <!-- Note editor: one note open for writing. Saves by itself as you type; the first line is the note's title. -->
+            <section class="user-page" data-page="note" aria-label="Note editor">
+              <h1>Note</h1>
+              <div class="note-editor-top">
+                <button type="button" class="note-back" id="noteBack"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6" /></svg><span id="noteBackLabel">Notes</span></button>
+                <span class="note-editor-status" id="noteStatus" role="status"></span>
+                <button type="button" class="note-tool" id="noteRemindButton" aria-label="Set a reminder" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg></button>
+                <button type="button" class="note-tool" id="noteDeleteButton" aria-label="Delete note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14" /><path d="M9.5 7V4.5h5V7" /><path d="M7 7l.8 12.5h8.4L17 7" /><path d="M10 10.5v6M14 10.5v6" /></svg></button>
+              </div>
+              <div class="note-remind" id="noteRemind" hidden>
+                <span>Remind me on</span><input id="noteDate" type="date" aria-label="Reminder date" /><input id="noteTime" type="time" aria-label="Reminder time" /><button type="button" class="note-remind-clear" id="noteRemindClear" aria-label="Remove reminder">×</button>
+                <small id="noteRemindHint"></small>
+              </div>
+              <div class="note-toolbar" id="noteToolbar" role="toolbar" aria-label="Formatting">
+                <button type="button" data-cmd="bold" aria-label="Bold"><b>B</b></button><button type="button" data-cmd="italic" aria-label="Italic"><i>I</i></button><button type="button" data-cmd="underline" aria-label="Underline"><u>U</u></button><button type="button" data-cmd="strikeThrough" aria-label="Strikethrough"><s>S</s></button><button type="button" data-list="bullet" aria-label="Bullet list"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="7" r="1.3" /><circle cx="5.5" cy="12" r="1.3" /><circle cx="5.5" cy="17" r="1.3" /><path d="M10 7h9M10 12h9M10 17h9" /></svg></button><button type="button" data-list="todo" aria-label="Checklist"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="6" height="6" rx="1.5" /><path d="m5 7.5 1.3 1.3L9 6" /><rect x="3.5" y="13.5" width="6" height="6" rx="1.5" /><path d="M13 7.5h7M13 16.5h7" /></svg></button>
+              </div>
+              <div class="note-editor" id="noteEditor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Note" data-placeholder="Start writing…"></div>
+            </section>
+
+            <!-- RET.ai (Ailexity's retail AI): opened from the header button. Ask about sales, revenue, stock and customers; past chats stay listed on this page. -->
+            <section class="user-page" data-page="ai" aria-label="RET.ai assistant">
+              <p class="greeting">Ailexity's retail AI · ask about your sales &amp; store</p><h1>RET.ai</h1>
+              <div class="ai-toolbar">
+                <button type="button" class="ai-history-toggle" id="aiHistoryToggle" aria-expanded="false" aria-controls="aiHistory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" /><path d="M3.5 4v4h4" /><path d="M12 7.5V12l3 2" /></svg><span id="aiHistoryLabel">Chat history</span></button>
+                <button type="button" class="ai-new-chat" id="aiNewChat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>New chat</button>
+              </div>
+              <article class="item-list ai-history" id="aiHistory" hidden></article>
+              <div class="ai-setup" id="aiSetup" hidden><strong>RET.ai is not set up yet</strong><p>Add a free <code>GEMINI_API_KEY</code> (aistudio.google.com), <code>GROQ_API_KEY</code> or <code>OPENROUTER_API_KEY</code> — or point <code>OLLAMA_URL</code> at an Ollama running on the server — in the server's <code>.env</code> file and restart it.</p></div>
+              <div class="ai-thread" id="aiThread" aria-live="polite"></div>
+              <form class="ai-composer" id="aiComposer" autocomplete="off">
+                <textarea id="aiInput" rows="1" maxlength="2000" placeholder="Ask RET.ai about sales, stock, customers…" aria-label="Message RET.ai"></textarea>
+                <button type="submit" id="aiSend" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" /></svg></button>
+              </form>
+            </section>
+
+            <section class="user-page" data-page="items" aria-label="Items page">
+              <p class="greeting">Items management</p><h1>Items</h1>
+              <div class="user-toolbar"><span id="itemCount">No items yet</span><button type="button" id="addItemButton">+ Add item</button></div>
+              <div class="chip-row" id="itemFilters" role="tablist" aria-label="Filter items">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All items</button>
+                <button type="button" class="chip" data-filter="low" role="tab" aria-selected="false">Low stock</button>
+                <button type="button" class="chip" data-filter="out" role="tab" aria-selected="false">Out of stock</button>
+              </div>
+              <div class="chip-row chip-row-scroll" id="categoryFilters" aria-label="Filter by category" hidden></div>
+              <form class="store-form" id="itemForm" hidden>
+                <input type="hidden" id="itemFormId" />
+                <label>Name<input id="itemName" required maxlength="80" placeholder="e.g. House blend coffee" /></label>
+                <div class="form-row"><label>Price<input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" /></label><label>Quantity<input id="itemQuantity" required type="number" min="0" step="1" inputmode="numeric" placeholder="0" /></label></div>
+                <div class="form-row"><label>Category<input id="itemCategory" list="categoryOptions" maxlength="40" placeholder="e.g. Beverages" /><datalist id="categoryOptions"></datalist></label><label>Low-stock alert at<input id="itemLowStock" type="number" min="0" step="1" inputmode="numeric" placeholder="5" /></label></div>
+                <label>SKU (optional)<input id="itemSku" maxlength="40" placeholder="e.g. 1024" /></label>
+                <div class="form-actions"><button type="submit" id="itemFormSubmit">Add item</button><button type="button" class="ghost-button" id="itemFormCancel">Cancel</button><button type="button" class="danger-button" id="itemDeleteButton" hidden>Delete item</button></div>
+                <small id="itemFormMessage" role="status"></small>
+              </form>
+              <article class="item-list" id="itemList"><div class="empty-list">No items yet. Add your first product to start billing.</div></article>
+            </section>
+
+            <section class="user-page" data-page="billing" aria-label="Billing page">
+              <p class="greeting">Billing &amp; invoicing</p><h1>Billing</h1>
+              <div class="user-toolbar"><span id="pickCount">Tap an item to add it</span><input class="search-input" id="pickSearch" type="search" placeholder="Search items" aria-label="Search items" /></div>
+              <div class="chip-row chip-row-scroll" id="pickCategories" role="tablist" aria-label="Filter by category" hidden></div>
+              <div class="pick-grid" id="pickList"></div>
+            </section>
+
+            <section class="user-page" data-page="history" aria-label="Orders page">
+              <p class="greeting">Order history</p><h1>Orders</h1>
+              <div class="user-toolbar"><span id="historyCount">No orders yet</span></div>
+              <!-- Performance report: pick a period, see how the store did, download it as a PDF (optionally with every order). -->
+              <article class="settings-groups report-panel" id="reportPanel">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">▤</span><span><strong>Performance report</strong><small id="reportSummaryLine">Pick a period to see how the store did, then download it as a PDF</small></span><b>›</b></button>
+                  <div class="settings-form settings-static report-body" hidden>
+                    <div class="chip-row" id="reportPresets" role="tablist" aria-label="Report period">
+                      <button type="button" class="chip" data-filter="today" role="tab" aria-selected="false">Today</button>
+                      <button type="button" class="chip" data-filter="yesterday" role="tab" aria-selected="false">Yesterday</button>
+                      <button type="button" class="chip active" data-filter="week" role="tab" aria-selected="true">This week</button>
+                      <button type="button" class="chip" data-filter="last7" role="tab" aria-selected="false">Last 7 days</button>
+                      <button type="button" class="chip" data-filter="month" role="tab" aria-selected="false">This month</button>
+                      <button type="button" class="chip" data-filter="lastMonth" role="tab" aria-selected="false">Last month</button>
+                      <button type="button" class="chip" data-filter="custom" role="tab" aria-selected="false">Custom dates</button>
+                    </div>
+                    <div class="form-row" id="reportDates" hidden><label>From<input id="reportFrom" type="date" /></label><label>To<input id="reportTo" type="date" /></label></div>
+                    <p class="report-range" id="reportRangeLabel"></p>
+                    <div class="stat-tiles stat-tiles-3">
+                      <article class="tile-good"><span>Sales</span><strong id="reportSales">–</strong></article>
+                      <article><span>Orders</span><strong id="reportOrders">–</strong></article>
+                      <article><span>Avg. order value</span><strong id="reportAvg">–</strong></article>
+                      <article><span>Items sold</span><strong id="reportItems">–</strong></article>
+                      <article class="tile-warn"><span>Pending payments</span><strong id="reportPending">–</strong></article>
+                      <article class="tile-muted"><span>Cancelled / refunded</span><strong id="reportVoided">–</strong></article>
+                    </div>
+                    <div class="report-lines" id="reportBreakdown"></div>
+                    <label class="check-row"><input type="checkbox" id="reportIncludeOrders" checked /><span>Include every order in the period (full order history) in the PDF</span></label>
+                    <div class="form-actions"><button type="button" id="reportDownload">Download PDF report</button></div>
+                    <small class="settings-message" id="reportMessage" role="status"></small>
+                  </div>
+                </section>
+              </article>
+              <div class="chip-row" id="orderFilters" role="tablist" aria-label="Filter orders">
+                <button type="button" class="chip active" data-filter="all" role="tab" aria-selected="true">All</button>
+                <button type="button" class="chip" data-filter="today" role="tab" aria-selected="false">Today</button>
+                <button type="button" class="chip" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+                <button type="button" class="chip" data-filter="cancelled" role="tab" aria-selected="false">Cancelled</button>
+                <button type="button" class="chip" data-filter="refunded" role="tab" aria-selected="false">Refunded</button>
+              </div>
+              <article class="history-list" id="historyList"></article>
+            </section>
+
+            <section class="user-page" data-page="profile" aria-label="Profile page">
+              <p class="greeting">Profile &amp; settings</p><h1>Profile</h1>
+              <article class="profile-card"><span class="profile-large-avatar" id="profileAvatar">U</span><strong id="profileName">Store owner</strong><small id="profileEmail">owner@store.com</small><small id="profileStore"></small></article>
+              <article class="settings-groups" id="storeSettings">
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◉</span><span><strong>Store profile</strong><small id="profileStoreDetails">Business profile and contact</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeProfileForm" hidden>
+                    <label>Store name<input id="settingsStoreName" required maxlength="80" /></label>
+                    <label>Owner name<input id="settingsOwnerName" required /></label>
+                    <label>Phone<input id="settingsPhone" type="tel" required /></label>
+                    <label>Business type<select id="settingsBusinessType"><option value="">Not set</option><option>Grocery</option><option>Pharmacy</option><option>Clothing</option><option>Electronics</option><option>Restaurant / Café</option><option>Hardware</option><option>Other</option></select></label>
+                    <label>Address<input id="settingsAddress" maxlength="160" placeholder="Area, city" /></label>
+                    <p class="form-hint">Your sign-in email is fixed. Write to us from Message Ailexity Retail if it needs changing.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⌁</span><span><strong>Billing &amp; invoices</strong><small id="billingSettingsSummary">Tax and invoice note</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeBillingForm" hidden>
+                    <div class="form-row"><label>Default tax rate (%)<input id="settingsTaxRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0" /></label><label>Tax label<input id="settingsTaxLabel" maxlength="20" placeholder="e.g. GST" /></label></div>
+                    <label>Invoice note<textarea id="settingsInvoiceNote" maxlength="200" rows="2" placeholder="Printed at the bottom of every invoice"></textarea></label>
+                    <label class="check-row"><input type="checkbox" id="settingsShowContact" /><span>Show store phone and address on invoices</span></label>
+                    <p class="form-hint">The tax rate is pre-filled on every new bill and can still be changed per bill.</p>
+                    <p class="section-label">Business identity on the invoice</p>
+                    <label>Registered / legal name<input id="settingsLegalName" maxlength="120" placeholder="e.g. Sharma Traders Pvt Ltd" /></label>
+                    <div class="form-row"><label>GSTIN<input id="settingsGstin" maxlength="15" autocapitalize="characters" spellcheck="false" placeholder="23ABCDE1234F1Z5" /></label><label>Place of supply<input id="settingsPlaceOfSupply" maxlength="60" placeholder="e.g. Madhya Pradesh (23)" /></label></div>
+                    <label>FSSAI licence (food businesses)<input id="settingsFssai" maxlength="14" inputmode="numeric" placeholder="14 digits, optional" /></label>
+                    <label>Terms &amp; conditions<textarea id="settingsTerms" maxlength="600" rows="3" placeholder="One per line. Leave blank to print the standard terms."></textarea></label>
+                    <p class="form-hint">Every field here is optional and only ever appears on the invoice. Fill in the GSTIN and place of supply to issue a compliant tax invoice.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◫</span><span><strong>Inventory</strong><small id="inventorySettingsSummary">Low-stock alerts</small></span><b>›</b></button>
+                  <form class="settings-form" id="storeInventoryForm" hidden>
+                    <label>Default low-stock alert level<input id="settingsLowStock" type="number" min="0" step="1" inputmode="numeric" required /></label>
+                    <label class="check-row"><input type="checkbox" id="settingsStockToasts" /><span>Warn me when an item becomes low or out of stock</span></label>
+                    <p class="form-hint">Applies to new items; each item can set its own level.</p>
+                    <div class="form-actions"><button type="submit">Save changes</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">◷</span><span><strong>Help &amp; support</strong><small id="profilePlan">Your account and how to reach us</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden><p class="form-hint" id="subscriptionDetails"></p><p class="form-hint" id="supportDetails"></p></div>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">⚙</span><span><strong>Security</strong><small id="storeSecuritySummary">Password and account access</small></span><b>›</b></button>
+                  <form class="settings-form" id="storePasswordForm" hidden>
+                    <label>Current password<input id="storeCurrentPassword" type="password" autocomplete="current-password" required /></label>
+                    <label>New password<input id="storeNewPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="At least 8 characters" /></label>
+                    <label>Confirm new password<input id="storeConfirmPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
+                    <p class="form-hint">Your other devices are signed out when the password changes.</p>
+                    <div class="form-actions"><button type="submit">Update password</button></div>
+                    <small class="settings-message" role="status"></small>
+                  </form>
+                </section>
+                <section class="settings-group">
+                  <button type="button" class="settings-row" aria-expanded="false"><span class="setting-icon">✉</span><span><strong id="feedbackTitle">Message Ailexity Retail</strong><small id="feedbackSummary">Feedback, problems or requests for the team</small></span><b>›</b></button>
+                  <div class="settings-form settings-static" hidden>
+                    <form id="feedbackForm" class="message-form">
+                      <label>About<select id="feedbackCategory"><option value="feedback">Feedback</option><option value="issue">A problem</option><option value="request">A request</option><option value="other">Something else</option></select></label>
+                      <label>Subject<input id="feedbackSubject" required maxlength="100" placeholder="In a few words" /></label>
+                      <label>Message<textarea id="feedbackText" required maxlength="1000" rows="4" placeholder="Tell us what's on your mind"></textarea></label>
+                      <p class="form-hint" id="feedbackHint">Goes straight to the team's inbox. Your history below shows when each message has been seen.</p>
+                      <div class="form-actions"><button type="submit">Send message</button></div>
+                      <small class="settings-message" role="status"></small>
+                    </form>
+                    <p class="section-label">Your messages</p>
+                    <div class="sent-messages" id="feedbackHistory"><div class="empty-activity">Nothing sent yet.</div></div>
+                  </div>
+                </section>
+                <section class="settings-group"><button type="button" class="settings-row" id="userSignOutButton"><span class="setting-icon logout-icon">↪</span><span><strong>Sign out</strong><small>End this session</small></span><b>›</b></button></section>
+              </article>
+              <footer class="brand-footer" aria-label="Powered by Ailexity"><span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i></span><span><strong>Powered by Ailexity</strong><small>Ailexity Retail · Ailexity Retail</small></span></footer>
+            </section>
+          </div>
+          <!-- Cart: a floating bar above the tab bar while the billing page has items; tapping it opens the sheet with lines, totals and checkout. -->
+          <div class="message-popup" id="messagePopup" hidden role="dialog" aria-modal="true" aria-labelledby="messagePopupTitle">
+            <div class="message-popup-card">
+              <span class="badge" id="messagePopupLevel">Message</span>
+              <h2 id="messagePopupTitle"></h2>
+              <p id="messagePopupText"></p>
+              <small id="messagePopupMeta"></small>
+              <div class="form-actions"><button type="button" id="messagePopupOk">Got it</button><button type="button" class="ghost-button" id="messagePopupLater">Later</button></div>
+              <small class="message-popup-count" id="messagePopupCount"></small>
+            </div>
+          </div>
+          <!-- Reminder popup: a reminder whose time has come while the app is open (any store page). -->
+          <div class="message-popup" id="reminderPopup" hidden role="dialog" aria-modal="true" aria-labelledby="reminderPopupTitle">
+            <div class="message-popup-card">
+              <span class="badge badge-important">Reminder</span>
+              <h2 id="reminderPopupTitle"></h2>
+              <p id="reminderPopupText"></p>
+              <small id="reminderPopupMeta"></small>
+              <div class="form-actions"><button type="button" id="reminderPopupDone">Mark done</button><button type="button" class="ghost-button" id="reminderPopupLater">Later</button></div>
+              <small class="message-popup-count" id="reminderPopupCount"></small>
+            </div>
+          </div>
+          <!-- View invoice: the same receipt template the customer sees on the shared link. -->
+          <div class="message-popup invoice-popup" id="invoicePopup" hidden role="dialog" aria-modal="true" aria-label="Invoice">
+            <div class="invoice-popup-card">
+              <div class="invoice-popup-top">
+                <strong id="invoicePopupTitle">Invoice</strong>
+                <button type="button" class="invoice-popup-close" id="invoiceClose" aria-label="Close invoice">&times;</button>
+              </div>
+              <div class="invoice-popup-body" id="invoiceBody"></div>
+              <div class="invoice-popup-actions">
+                <button type="button" id="invoiceShareLink">Copy invoice link</button>
+                <button type="button" class="ghost-button" id="invoicePrint">Print</button>
+              </div>
+            </div>
+          </div>
+          <div class="cart-backdrop" id="cartBackdrop" hidden></div>
+          <section class="cart-float" id="cartFloat" hidden aria-label="Cart">
+            <div class="cart-sheet cart-card" id="cartSheet" hidden>
+              <div class="card-heading"><strong>Cart</strong><span><button type="button" id="clearCartButton">Clear</button></span></div>
+              <div id="cartLines"></div>
+              <div class="cart-summary" id="cartSummary">
+                <div><span>Items</span><b id="cartItemCount">0</b></div>
+                <div><span>Subtotal</span><b id="cartSubtotal">0</b></div>
+                <div class="cart-adjust"><label>Discount (amount)<input id="cartDiscount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /></label><label>Tax rate (%)<input id="cartTaxRate" type="number" min="0" max="100" step="0.01" inputmode="decimal" placeholder="0" /></label></div>
+                <div id="cartDiscountRow" hidden><span>Discount</span><b id="cartDiscountAmount">0</b></div>
+                <div><span id="cartTaxLabel">Tax</span><b id="cartTax">0</b></div>
+                <div><span>Total</span><b id="cartTotal">0</b></div>
+              </div>
+              <div class="form-row customer-row"><label>Customer (optional)<input id="customerName" maxlength="80" placeholder="Name" /></label><label>WhatsApp number<input id="customerPhone" type="tel" inputmode="tel" maxlength="20" placeholder="+91 98765 43210" /></label></div>
+              <label class="pay-method">Payment<select id="paymentMethod"><option value="cash">Cash</option><option value="card">Card</option><option value="upi">UPI</option><option value="credit">Pay later (pending)</option></select></label>
+              <button type="button" class="complete-button" id="completeBillButton" disabled>Complete bill</button>
+              <small id="billingMessage" role="status"></small>
+            </div>
+            <button type="button" class="cart-bar" id="cartBar" aria-expanded="false" aria-controls="cartSheet" hidden><span class="cart-bar-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h2.5l2 10h10l2-7H7" /><circle cx="9.5" cy="19" r="1.5" /><circle cx="16.5" cy="19" r="1.5" /></svg></span><span class="cart-bar-text"><strong id="cartBarTitle">0 items</strong><small id="cartBarMeta">Tap to review and complete the bill</small></span><b id="cartBarTotal">–</b><i class="cart-bar-chevron"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 14 6-6 6 6" /></svg></i></button>
+            <div class="last-bill" id="lastBill" hidden><div><strong id="lastBillTitle"></strong><small id="lastBillMeta"></small></div><button type="button" class="whatsapp-button" id="lastBillWhatsApp">Send invoice on WhatsApp</button><button type="button" class="last-bill-close" id="lastBillClose" aria-label="Dismiss">×</button></div>
+          </section>
+          <nav class="tab-bar" aria-label="Retailer navigation">
+            <button class="tab-item active" type="button" data-page="home" aria-current="page"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7" /><path d="M5 9.5V20h14V9.5" /><path d="M10 20v-6h4v6" /></svg><span class="tab-label">Dashboard</span><i class="tab-dot" id="homeTabDot" hidden></i></button>
+            <button class="tab-item" type="button" data-page="items"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5" /></svg><span class="tab-label">Items</span></button>
+            <button class="tab-item" type="button" data-page="billing"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10.5h18" /><path d="M7 15h3.5" /></svg><span class="tab-label">Billing</span></button>
+            <button class="tab-item" type="button" data-page="history"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg><span class="tab-label">Orders</span></button>
+            <button class="tab-item" type="button" data-page="profile"><svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" /></svg><span class="tab-label">Profile</span></button>
+          </nav>
+        </section>
+      </div>
+    </main>
+    <script src="invoice-template.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

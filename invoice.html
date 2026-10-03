@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Invoice</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f1f1ef">
+<link rel="icon" href="/icon-192.png">
+<link rel="stylesheet" href="/invoice.css">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: clamp(12px, 4vw, 34px) clamp(10px, 3vw, 24px) 40px;
+    background: #f1f1ef;
+    color: #111;
+    font-family: "DM Sans", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .sheet {
+    max-width: 420px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(17, 24, 28, .12), 0 1px 3px rgba(17, 24, 28, .08);
+    overflow: hidden;
+  }
+  /* the torn-paper edge at the bottom of a till slip */
+  .sheet::after {
+    content: "";
+    display: block;
+    height: 10px;
+    background:
+      radial-gradient(circle at 6px -3px, transparent 0 6px, #fff 6px) repeat-x 0 0 / 12px 10px;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, .05));
+  }
+  .actions {
+    display: flex;
+    gap: 8px;
+    max-width: 420px;
+    margin: 14px auto 0;
+  }
+  .actions button {
+    flex: 1;
+    padding: 11px 12px;
+    border: 1px solid rgba(17, 24, 28, .16);
+    border-radius: 999px;
+    background: #fff;
+    color: #111;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .actions button:hover { background: #111; color: #fff; border-color: #111; }
+  .state {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 46px 24px;
+    background: #fff;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(17, 24, 28, .12);
+  }
+  .state h1 { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+  .state p { margin: 0; font-size: 13px; line-height: 1.6; color: #6c6c66; }
+  .credit { max-width: 420px; margin: 16px auto 0; font-size: 11px; text-align: center; color: #8b8b84; }
+  @media print {
+    body { padding: 0; background: #fff; }
+    .sheet { max-width: none; box-shadow: none; border-radius: 0; }
+    .sheet::after, .actions, .credit { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div class="state"><h1>Loading your invoice…</h1><p>One moment.</p></div>
+</div>
+
+<script src="/invoice-template.js"></script>
+<script>
+(function () {
+  "use strict";
+  const root = document.getElementById("root");
+  const token = (location.pathname.match(/\/invoice\/([A-Za-z0-9_-]+)/) || [])[1];
+
+  const fail = (title, detail) => {
+    root.innerHTML = `<div class="state"><h1></h1><p></p></div>`;
+    root.querySelector("h1").textContent = title;
+    root.querySelector("p").textContent = detail;
+  };
+
+  if (!token) {
+    fail("Invoice not found", "This link is incomplete. Ask the store to send it again.");
+    return;
+  }
+
+  fetch(`/api/invoice/${encodeURIComponent(token)}`, { headers: { accept: "application/json" } })
+    .then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "This invoice link is not valid any more.");
+      return data;
+    })
+    .then((data) => {
+      root.innerHTML = '<div class="sheet"></div>'
+        + '<div class="actions"><button type="button" id="printBtn">Print / Save as PDF</button><button type="button" id="shareBtn" hidden>Share</button></div>'
+        + '<p class="credit"></p>';
+      root.querySelector(".sheet").innerHTML = window.AilexityInvoice.render(data);
+      root.querySelector(".credit").textContent = `Billed with ${data.platformName || "Ailexity Retail"}`;
+
+      const label = data.bill.invoiceNumber || "Invoice";
+      document.title = `${label} · ${data.store.name || "Invoice"}`;
+
+      document.getElementById("printBtn").addEventListener("click", () => window.print());
+
+      const shareBtn = document.getElementById("shareBtn");
+      if (navigator.share) {
+        shareBtn.hidden = false;
+        shareBtn.addEventListener("click", () => {
+          navigator.share({ title: `${label} · ${data.store.name || ""}`.trim(), url: location.href }).catch(() => {});
+        });
+      }
+    })
+    .catch((error) => fail("Invoice not available", error.message));
+})();
+</script>
+</body>
+</html>
