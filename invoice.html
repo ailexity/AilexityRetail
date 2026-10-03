@@ -67,6 +67,7 @@
   .state h1 { margin: 0 0 8px; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
   .state p { margin: 0; font-size: 13px; line-height: 1.6; color: #6c6c66; }
   .credit { max-width: 420px; margin: 16px auto 0; font-size: 11px; text-align: center; color: #8b8b84; }
+  @page { size: A4; margin: 9mm 10mm; }
   @media print {
     body { padding: 0; background: #fff; }
     .sheet { max-width: none; box-shadow: none; border-radius: 0; }
@@ -97,6 +98,31 @@
     fail("Invoice not found", "This link is incomplete. Ask the store to send it again.");
     return;
   }
+
+  // One printed page: while printing, the sheet gets the compact .inv-fit styles, and if the
+  // receipt still runs a little past one A4 page it is zoomed down — never below MIN_ZOOM, so
+  // a bill with too many items prints readable across several pages instead of microscopic on one.
+  const PAGE_W = 718, PAGE_H = 1046; // A4 inside the 10mm / 9mm @page margins, in CSS pixels
+  const MIN_ZOOM = 0.68;
+  window.addEventListener("beforeprint", () => {
+    const sheet = root.querySelector(".sheet");
+    if (!sheet) return;
+    sheet.classList.add("inv-fit");
+    sheet.style.zoom = "";
+    const probe = sheet.cloneNode(true);
+    probe.style.cssText = `position:absolute;left:-9999px;top:0;width:${PAGE_W}px;`;
+    document.body.appendChild(probe);
+    const height = probe.getBoundingClientRect().height;
+    probe.remove();
+    const zoom = PAGE_H / height;
+    if (zoom < 1 && zoom >= MIN_ZOOM) sheet.style.zoom = zoom.toFixed(3);
+  });
+  window.addEventListener("afterprint", () => {
+    const sheet = root.querySelector(".sheet");
+    if (!sheet) return;
+    sheet.classList.remove("inv-fit");
+    sheet.style.zoom = "";
+  });
 
   fetch(`/api/invoice/${encodeURIComponent(token)}`, { headers: { accept: "application/json" } })
     .then(async (response) => {

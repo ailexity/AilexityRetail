@@ -288,4 +288,48 @@
 @media print {
   .inv { max-width: none; padding: 0; font-size: 11px; }
   .inv-barcode-svg { width: 200px; }
+  /* a bill too long for one page breaks between rows, never through them */
+  .inv-items thead { display: table-header-group; }
+  .inv-items tr, .inv-totals, .inv-words, .inv-saved, .inv-block, .inv-count, .inv-barcode, .inv-foot { break-inside: avoid; }
 }
+
+/* ==========================================================================
+   One-page print. The public invoice page puts .inv-fit on the sheet while
+   printing: every section tightens and the meta grid goes four-up, so the
+   fixed sections leave most of an A4 page to the items. The page then zooms
+   the sheet down a little further if needed (see invoice.html), so only a
+   bill with too many items runs past page one.
+   ========================================================================== */
+.inv-fit .inv { max-width: none; padding: 0; font-size: 10px; line-height: 1.35; }
+.inv-fit .inv-head { padding-bottom: 8px; }
+.inv-fit .inv-head h1 { font-size: 14px; }
+.inv-fit .inv-sub { margin-top: 3px; font-size: 9.5px; line-height: 1.4; }
+.inv-fit .inv-title { margin-bottom: 8px; padding: 4px 0; font-size: 10.5px; }
+.inv-fit .inv-meta { grid-template-columns: repeat(4, 1fr); gap: 4px 12px; margin-bottom: 8px; padding-bottom: 8px; }
+.inv-fit .inv-meta-single { grid-template-columns: repeat(4, 1fr); }
+.inv-fit .inv-meta dt { font-size: 8px; }
+.inv-fit .inv-meta dd { margin-top: 1px; font-size: 10px; }
+.inv-fit .inv-flag { margin-bottom: 8px; padding: 4px 8px; font-size: 9.5px; }
+.inv-fit .inv-items { margin-bottom: 6px; }
+.inv-fit .inv-items th { padding-bottom: 4px; font-size: 8px; }
+.inv-fit .inv-items td { padding: 4px 0; font-size: 9.5px; }
+.inv-fit .inv-item-name { font-size: 10px; line-height: 1.25; }
+.inv-fit .inv-item-sku { margin-top: 1px; font-size: 7.5px; }
+.inv-fit .inv-totals div { padding: 2px 0; font-size: 10px; }
+.inv-fit .inv-grand { margin-top: 4px; padding-top: 5px !important; font-size: 11px !important; }
+.inv-fit .inv-grand dd { font-size: 12.5px; }
+.inv-fit .inv-words { margin-top: 6px; padding: 5px 8px; font-size: 9.5px; line-height: 1.4; }
+.inv-fit .inv-words span { font-size: 7.5px; }
+.inv-fit .inv-saved { margin-top: 5px; padding: 4px 8px; font-size: 10px; }
+.inv-fit .inv-block { margin-top: 9px; padding-top: 7px; }
+.inv-fit .inv-block h2 { margin-bottom: 5px; font-size: 8px; }
+.inv-fit .inv-tax th { padding-bottom: 3px; font-size: 8px; }
+.inv-fit .inv-tax td { padding-top: 3px; font-size: 9.5px; }
+.inv-fit .inv-tax tfoot th, .inv-fit .inv-tax tfoot td { padding-top: 4px; font-size: 9.5px; }
+.inv-fit .inv-count { margin-top: 8px; padding: 5px 0; font-size: 9px; }
+.inv-fit .inv-note { margin-top: 7px; font-size: 9.5px; }
+.inv-fit .inv-terms li { margin-top: 2px; font-size: 8px; line-height: 1.35; }
+.inv-fit .inv-barcode { margin-top: 9px; padding-top: 7px; }
+.inv-fit .inv-barcode-svg { width: 170px; height: 34px; }
+.inv-fit .inv-barcode span { margin-top: 3px; font-size: 9px; }
+.inv-fit .inv-foot { margin-top: 7px; font-size: 8px; }
