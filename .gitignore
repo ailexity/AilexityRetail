@@ -3,6 +3,6 @@ node_modules/
 data/*.json
 *.tmp
 
-# built app package (ship it with the deployment, not the repo)
+# built app package lives in apk/ and is committed so deployments can serve it;
+# keep downloads/ free of stray copies
 downloads/*.apk
-apk/*.apk
